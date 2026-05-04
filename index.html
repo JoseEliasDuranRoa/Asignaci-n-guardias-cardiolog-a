@@ -405,6 +405,20 @@
       </div>
     </div>
 
+    <!-- Regla: R1 acompañante -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">👥 Guardia doblada para R1</div>
+          <div class="rule-desc">Los R1 siempre deben ir acompañados por un residente de mayor año (R2-R5). La auto-asignación asignará automáticamente un acompañante cuando un R1 cubra guardia.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-r1Acomp-activo" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
     <!-- Regla: Dobletes laborables -->
     <div class="rule-card">
       <div class="rule-row">
@@ -587,6 +601,7 @@ function defaultReglas() {
     dobletes: { permitir: false, maxPorPersona: { activo: false, valor: 1 } },
     dobleteFinde: { permitir: false, maxPorPersona: { activo: false, valor: 1 } },
     tripletes: { permitir: false },
+    r1Acompanante: { activo: false },
     sobrescribir: false
   };
 }
@@ -993,6 +1008,15 @@ function renderCalendario() {
 
     cell.innerHTML += `<div class="day-num">${d}</div>`;
     cell.appendChild(buildSlot(ds, 'guardia', '🏥'));
+
+    // Slot acompañante: mostrar si hay R1 en guardia (con regla activa) o si ya hay alguien asignado
+    const guardiaResId = state.asignaciones[ds + '_guardia'];
+    const guardiaRes = guardiaResId ? state.residentes.find(r => r.id === guardiaResId) : null;
+    const r1EnGuardia = state.reglas.r1Acompanante && state.reglas.r1Acompanante.activo && guardiaRes && guardiaRes.anio === 'R1';
+    if (r1EnGuardia || !!state.asignaciones[ds + '_guardia2']) {
+      cell.appendChild(buildSlot(ds, 'guardia2', '👥'));
+    }
+
     cell.appendChild(buildSlot(ds, 'busca', '📟'));
     grid.appendChild(cell);
   }
@@ -1016,7 +1040,7 @@ function buildSlot(ds, tipo, icon) {
 
   const nameSpan = document.createElement('span');
   nameSpan.className = 'slot-name';
-  nameSpan.textContent = res ? res.nombre.split(' ')[0] : (tipo === 'guardia' ? 'Guardia' : 'Busca');
+  nameSpan.textContent = res ? res.nombre.split(' ')[0] : (tipo === 'guardia' ? 'Guardia' : tipo === 'guardia2' ? 'Acomp.' : 'Busca');
 
   div.appendChild(labelSpan);
   div.appendChild(nameSpan);
@@ -1049,7 +1073,8 @@ function openModal(dateStr, tipo) {
   currentModal = { dateStr, tipo };
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const [yy, mm, dd] = dateStr.split('-').map(Number);
-  document.getElementById('modal-titulo').textContent = (tipo === 'guardia' ? '🏥 Guardia' : '📟 Busca');
+  document.getElementById('modal-titulo').textContent =
+    tipo === 'guardia' ? '🏥 Guardia' : tipo === 'guardia2' ? '👥 Guardia (acompañante R1)' : '📟 Busca';
   document.getElementById('modal-subtitle').textContent = `${dd} de ${months[mm-1]} de ${yy}`;
 
   const sel = document.getElementById('modal-select');
@@ -1091,6 +1116,14 @@ function checkModalWarn() {
 
   if (res && isRotandoFuera(res, dateStr) && !aus)
     msgs.push({ bg:'#f0f9ff', border:'#bae6fd', color:'#0369a1', text:'✈ Está rotando fuera (viene por la tarde)' });
+
+  // Aviso R1 sin acompañante
+  if (state.reglas.r1Acompanante && state.reglas.r1Acompanante.activo) {
+    if (currentModal.tipo === 'guardia' && res && res.anio === 'R1' && !state.asignaciones[dateStr + '_guardia2'])
+      msgs.push({ bg:'#fef9c3', border:'#fde047', color:'#854d0e', text:'👥 R1 sin acompañante — recuerda asignar el slot "Acomp."' });
+    if (currentModal.tipo === 'guardia2' && res && res.anio === 'R1')
+      msgs.push({ bg:'#fde8e8', border:'#f98080', color:'#9b1c1c', text:'⚠️ El acompañante no puede ser R1' });
+  }
 
   msgs.forEach(m => {
     const d = document.createElement('div');
@@ -1160,7 +1193,7 @@ function renderStats() {
     const dow = new Date(dateStr).getDay();
     const isFinde = dow === 0 || dow === 6;
     const res = state.residentes.find(r => r.id === resId);
-    if (tipo === 'guardia') {
+    if (tipo === 'guardia' || tipo === 'guardia2') {
       statsMap[resId].guardias++;
       if (isFinde) statsMap[resId].guardiasFinde++;
       else statsMap[resId].guardiasLab++;
@@ -1311,6 +1344,7 @@ function renderStats() {
 // =============================================
 function renderReglas() {
   const R = state.reglas;
+  document.getElementById('rg-r1Acomp-activo').checked = R.r1Acompanante ? R.r1Acompanante.activo : false;
   document.getElementById('rg-incluirRotando').checked = R.incluirRotando;
   document.getElementById('rg-maxFinde-activo').checked = R.maxFinde.activo;
   document.getElementById('rg-maxFinde-valor').value = R.maxFinde.valor;
@@ -1334,6 +1368,8 @@ function renderReglas() {
 
 function saveReglas() {
   const R = state.reglas;
+  if (!R.r1Acompanante) R.r1Acompanante = { activo: false };
+  R.r1Acompanante.activo = document.getElementById('rg-r1Acomp-activo').checked;
   R.incluirRotando = document.getElementById('rg-incluirRotando').checked;
   R.maxFinde.activo = document.getElementById('rg-maxFinde-activo').checked;
   R.maxFinde.valor = parseInt(document.getElementById('rg-maxFinde-valor').value) || 2;
@@ -1477,9 +1513,11 @@ function getElegiblesAuto(ds, tipo, isFinde, cntGuardias, cntFinde, yaEnOtroSlot
     // No asignar al ya en el otro slot hoy
     if (yaEnOtroSlotId && r.id === yaEnOtroSlotId) return false;
 
-    // No consecutivas: mismo tipo
-    if (tipo === 'guardia' && state.asignaciones[prevDs + '_guardia'] === r.id) return false;
-    if (tipo === 'busca'   && state.asignaciones[prevDs + '_busca']   === r.id) return false;
+    // No consecutivas: guardia (incluye guardia2 del día anterior)
+    if (tipo === 'guardia' &&
+        (state.asignaciones[prevDs + '_guardia'] === r.id ||
+         state.asignaciones[prevDs + '_guardia2'] === r.id)) return false;
+    if (tipo === 'busca' && state.asignaciones[prevDs + '_busca'] === r.id) return false;
 
     // Reglas de doblete/triplete solo aplican a guardias
     if (tipo === 'guardia') {
@@ -1619,6 +1657,39 @@ function autoAsignar() {
 
       cntGuardias[chosen.id] = (cntGuardias[chosen.id] || 0) + 1;
       if (isFinde) cntFinde[chosen.id] = (cntFinde[chosen.id] || 0) + 1;
+
+      // Si es R1 y la regla de acompañante está activa, asignar guardia2 con un no-R1
+      if (R.r1Acompanante && R.r1Acompanante.activo && chosen.anio === 'R1') {
+        const keyG2 = ds + '_guardia2';
+        if (!state.asignaciones[keyG2] || R.sobrescribir) {
+          const prevDsG2 = getDateStrFull(new Date(y, m, d - 1));
+          const elegiblesG2 = state.residentes.filter(r => {
+            if (r.anio === 'R1') return false;
+            if (r.id === chosen.id) return false;
+            if (getAusencia(r.id, ds)) return false;
+            if (isRotandoFuera(r, ds) && !R.incluirRotando && !R.rotandoIds.includes(r.id)) return false;
+            if (state.asignaciones[ds + '_busca'] === r.id) return false;
+            // No consecutiva (guardia o guardia2 el día anterior)
+            if (state.asignaciones[prevDsG2 + '_guardia'] === r.id ||
+                state.asignaciones[prevDsG2 + '_guardia2'] === r.id) return false;
+            if (R.maxTotal.activo) {
+              const max = R.maxTotal.tipo === 'custom' ? (R.maxTotal.custom[r.id] ?? R.maxTotal.valor) : R.maxTotal.valor;
+              if ((cntGuardias[r.id] || 0) >= max) return false;
+            }
+            if (R.maxFinde.activo && isFinde && (cntFinde[r.id] || 0) >= R.maxFinde.valor) return false;
+            return true;
+          });
+          if (elegiblesG2.length > 0) {
+            const companion = rankElegiblesAuto(elegiblesG2, ds, cntGuardias, cntFinde)[0];
+            state.asignaciones[keyG2] = companion.id;
+            asignados++;
+            cntGuardias[companion.id] = (cntGuardias[companion.id] || 0) + 1;
+            if (isFinde) cntFinde[companion.id] = (cntFinde[companion.id] || 0) + 1;
+          } else {
+            sinElegibles++;
+          }
+        }
+      }
     }
   }
 
