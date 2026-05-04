@@ -290,7 +290,8 @@
         <select id="cal-mes-jump" onchange="jumpToMes(this.value)" class="no-print"></select>
         <button class="btn btn-primary btn-sm no-print" onclick="autoAsignar()">⚡ Auto-asignar</button>
         <button class="btn btn-outline btn-sm no-print" onclick="imprimirCalendario()">🖨️ PDF cuadrante</button>
-        <button class="btn btn-outline no-print" style="font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="borrarMes()">🗑 Borrar mes</button>
+        <button class="btn btn-outline no-print" style="font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="borrarMes()">🗑 Borrar guardias</button>
+        <button class="btn btn-outline no-print" style="font-size:12px;color:#9a3412;border-color:#fed7aa" onclick="borrarSolicitudesMes()">🗑 Borrar solicitudes</button>
       </div>
     </div>
     <div id="cal-legend" class="legend"></div>
@@ -1887,11 +1888,19 @@ function imprimirEstadisticas() {
 function borrarMes() {
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const nombreMes = `${months[state.calMes]} ${state.calAnio}`;
-  if (!confirm(`¿Borrar todas las asignaciones y solicitudes de ${nombreMes}?\n\nResidentes y ausencias no se tocan.`)) return;
+  if (!confirm(`¿Borrar las asignaciones de ${nombreMes}?\n\nLas solicitudes de vacaciones y bloqueos NO se tocan.`)) return;
   const prefijo = `${state.calAnio}-${String(state.calMes+1).padStart(2,'0')}`;
   for (const k of Object.keys(state.asignaciones)) {
     if (k.startsWith(prefijo)) delete state.asignaciones[k];
   }
+  save(); renderCalendario();
+}
+
+function borrarSolicitudesMes() {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const nombreMes = `${months[state.calMes]} ${state.calAnio}`;
+  if (!confirm(`¿Borrar las solicitudes de vacaciones y bloqueos de ${nombreMes}?\n\nLas guardias asignadas NO se tocan.`)) return;
+  const prefijo = `${state.calAnio}-${String(state.calMes+1).padStart(2,'0')}`;
   for (const k of Object.keys(state.solicitudes)) {
     if (k.startsWith(prefijo)) delete state.solicitudes[k];
   }
