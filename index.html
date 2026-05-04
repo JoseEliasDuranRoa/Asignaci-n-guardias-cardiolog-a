@@ -1237,11 +1237,7 @@ function renderStats() {
         <th style="text-align:center">Finde</th>
         <th style="text-align:center">Buscas</th>
         <th>✈ Rotación externa</th>
-        <th style="text-align:center">📚 Aus. (días)</th>
-        <th style="text-align:center">🎓</th>
-        <th style="text-align:center">📚</th>
-        <th style="text-align:center">🏛</th>
-        <th style="text-align:center">📋</th>
+        <th style="text-align:center">Aus. (días)</th>
         <th style="min-width:120px">Distribución</th>
       </tr>
     </thead>
@@ -1260,10 +1256,6 @@ function renderStats() {
       <td style="text-align:center;font-weight:700">${s.buscas}</td>
       <td>${s.rotaInicio ? `<span class="badge badge-rotando">✈ ${s.rotaInicio} → ${s.rotaFin}</span>${s.guardiasRota > 0 ? `<br><span style="font-size:11px;color:var(--text-muted)">${s.guardiasRota} guardia${s.guardiasRota>1?'s':''} durante rotación</span>` : ''}` : '<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="text-align:center;font-weight:700">${s.ausencias.total > 0 ? s.ausencias.total : '—'}</td>
-      <td style="text-align:center">${s.ausencias.master > 0 ? s.ausencias.master : '—'}</td>
-      <td style="text-align:center">${s.ausencias.curso > 0 ? s.ausencias.curso : '—'}</td>
-      <td style="text-align:center">${s.ausencias.congreso > 0 ? s.ausencias.congreso : '—'}</td>
-      <td style="text-align:center">${s.ausencias.otro > 0 ? s.ausencias.otro : '—'}</td>
       <td>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${s.guardias} guardias</div>
@@ -1294,10 +1286,6 @@ function renderStats() {
         <th style="text-align:center">Media finde</th>
         <th style="text-align:center">Media buscas</th>
         <th style="text-align:center">Media aus. (días)</th>
-        <th style="text-align:center">🎓 Máster</th>
-        <th style="text-align:center">📚 Cursos</th>
-        <th style="text-align:center">🏛 Congresos</th>
-        <th style="text-align:center">📋 Otro</th>
       </tr>
     </thead>
     <tbody>`;
@@ -1313,10 +1301,6 @@ function renderStats() {
       <td style="text-align:center">${(pa.finde/n).toFixed(1)}</td>
       <td style="text-align:center">${(pa.buscas/n).toFixed(1)}</td>
       <td style="text-align:center;font-weight:700">${(pa.ausTotal/n).toFixed(1)}</td>
-      <td style="text-align:center">${(pa.ausMaster/n).toFixed(1)}</td>
-      <td style="text-align:center">${(pa.ausCurso/n).toFixed(1)}</td>
-      <td style="text-align:center">${(pa.ausCongreso/n).toFixed(1)}</td>
-      <td style="text-align:center">${(pa.ausOtro/n).toFixed(1)}</td>
     </tr>`;
 
     arr.filter(s => s.anio === a).forEach(s => {
@@ -1327,10 +1311,6 @@ function renderStats() {
         <td style="text-align:center;font-size:12px">${s.guardiasFinde}</td>
         <td style="text-align:center;font-size:12px">${s.buscas}</td>
         <td style="text-align:center;font-size:12px">${s.ausencias.total || '—'}</td>
-        <td style="text-align:center;font-size:12px">${s.ausencias.master || '—'}</td>
-        <td style="text-align:center;font-size:12px">${s.ausencias.curso || '—'}</td>
-        <td style="text-align:center;font-size:12px">${s.ausencias.congreso || '—'}</td>
-        <td style="text-align:center;font-size:12px">${s.ausencias.otro || '—'}</td>
       </tr>`;
     });
   });
