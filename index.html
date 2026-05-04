@@ -78,7 +78,7 @@
   .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
 
   /* CALENDARIO */
-  .cal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .cal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
   .cal-header h2 { font-size: 18px; font-weight: 700; min-width: 200px; text-align: center; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
   .cal-dow { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 4px; text-transform: uppercase; }
@@ -149,6 +149,26 @@
   .alert { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 12px; }
   .alert-info { background: var(--primary-light); color: var(--primary); border: 1px solid #93c5fd; }
   .mes-selector { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+
+  /* TOGGLE SWITCH */
+  .toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #cbd5e1; border-radius: 24px; transition: background .2s; }
+  .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .toggle input:checked + .toggle-slider { background: var(--primary); }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+
+  /* REGLAS */
+  .rule-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; }
+  .rule-row { display: flex; align-items: center; gap: 12px; }
+  .rule-info { flex: 1; }
+  .rule-title { font-weight: 600; font-size: 14px; }
+  .rule-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .rule-sub { margin-top: 12px; padding: 10px 14px; background: var(--bg); border-radius: 6px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .rule-sub label:not(.toggle) { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .rule-sub select { font-size: 13px; }
+  .rule-sub input[type=number] { width: 68px; padding: 5px 8px; font-size: 13px; }
+  .rule-disabled { opacity: 0.45; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -173,6 +193,7 @@
   <button onclick="showTab('solicitudes', this)">📋 Solicitudes</button>
   <button onclick="showTab('calendario', this)">📅 Calendario</button>
   <button onclick="showTab('estadisticas', this)">📊 Estadísticas</button>
+  <button onclick="showTab('reglas', this)">⚙️ Reglas</button>
 </nav>
 
 <main>
@@ -250,8 +271,9 @@
       <button class="btn btn-outline" onclick="cambiarMes(-1)">◀</button>
       <h2 id="cal-titulo"></h2>
       <button class="btn btn-outline" onclick="cambiarMes(1)">▶</button>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <select id="cal-mes-jump" onchange="jumpToMes(this.value)"></select>
+        <button class="btn btn-primary btn-sm" onclick="autoAsignar()">⚡ Auto-asignar</button>
         <button class="btn btn-outline" style="font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="borrarMes()">🗑 Borrar mes</button>
       </div>
     </div>
@@ -288,6 +310,173 @@
       <select id="stats-mes-sel" onchange="renderStats()"></select>
     </div>
     <div id="stats-content"></div>
+  </div>
+</div>
+
+<!-- TAB REGLAS -->
+<div id="tab-reglas" class="tab-content">
+  <div class="card">
+    <div class="card-title">⚙️ Reglas de auto-asignación</div>
+    <div class="alert alert-info" style="margin-bottom:16px">
+      Estas reglas se aplican al pulsar <strong>⚡ Auto-asignar</strong> en el calendario. Las reglas <em>desactivadas</em> no se tienen en cuenta. La regla de <strong>no guardias consecutivas</strong> siempre está activa.
+    </div>
+
+    <!-- Regla: Incluir rotando -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">Incluir residentes en rotación externa</div>
+          <div class="rule-desc">Por defecto, los residentes rotando fuera quedan excluidos. Activa para seleccionar quiénes pueden ser asignados durante su rotación.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-incluirRotando" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="rule-sub" id="rg-rotandoIds-sub" style="display:none">
+        <div style="font-size:12px;font-weight:700;color:var(--text-muted);width:100%;margin-bottom:2px">Selecciona quiénes pueden ser asignados durante su rotación:</div>
+        <div id="rg-rotandoIds-checks" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+    </div>
+
+    <!-- Regla: Max finde -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">Máximo de guardias de fin de semana</div>
+          <div class="rule-desc">Limita cuántas guardias en sábado o domingo puede acumular cada residente en el mes.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-maxFinde-activo" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="rule-sub" id="rg-maxFinde-sub" style="display:none">
+        <label>Máximo por persona: <input type="number" id="rg-maxFinde-valor" min="1" max="20" value="2" onchange="saveReglas()"></label>
+      </div>
+    </div>
+
+    <!-- Regla: Max total -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">Máximo de guardias totales</div>
+          <div class="rule-desc">Limita el total de guardias por persona. Puede ser un límite global o personalizado por residente.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-maxTotal-activo" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="rule-sub" id="rg-maxTotal-sub" style="display:none;flex-direction:column;align-items:flex-start">
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+          <label><input type="radio" name="rg-maxTotal-tipo" value="global" onchange="saveReglas()"> Global:
+            <input type="number" id="rg-maxTotal-valor" min="1" max="31" value="5" onchange="saveReglas()" style="width:68px;margin-left:4px">
+            <span style="font-size:12px;color:var(--text-muted)">guardias / persona</span>
+          </label>
+          <label><input type="radio" name="rg-maxTotal-tipo" value="custom" onchange="saveReglas()"> Personalizado por residente</label>
+        </div>
+        <div id="rg-maxTotal-custom-rows" style="display:none;margin-top:10px;width:100%"></div>
+      </div>
+    </div>
+
+    <!-- Regla: Respetar bloqueos -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">Respetar solicitudes de día libre (bloqueos)</div>
+          <div class="rule-desc">Evita asignar a residentes que han marcado ese día como vacaciones. El mecanismo decide quién asignar cuando no hay opciones sin bloqueo.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-respetarBloqueos-activo" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="rule-sub" id="rg-respetarBloqueos-sub" style="display:none">
+        <label>Mecanismo de decisión (tiebreaker):
+          <select id="rg-respetarBloqueos-mec" onchange="saveReglas()" style="margin-left:6px">
+            <option value="menos-guardias">Menos guardias asignadas</option>
+            <option value="menos-finde">Menos guardias de finde</option>
+            <option value="R-mayor">Más veterano primero (R5 → R1)</option>
+            <option value="R-menor">Menos veterano primero (R1 → R5)</option>
+            <option value="aleatorio">Aleatorio</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <!-- Regla: Dobletes laborables -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">Permitir dobletes (laborables)</div>
+          <div class="rule-desc">Permite guardia el día N y el día N+2, ambos días laborables (con un día de descanso entre medias).</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-dobletes-permitir" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="rule-sub" id="rg-dobletes-sub" style="display:none;align-items:center;gap:10px">
+        <label class="toggle" style="flex-shrink:0">
+          <input type="checkbox" id="rg-dobletes-maxPP-activo" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+        <span style="font-size:13px">Límite de dobletes por persona:</span>
+        <input type="number" id="rg-dobletes-maxPP-valor" min="1" max="10" value="1" onchange="saveReglas()">
+      </div>
+    </div>
+
+    <!-- Regla: Dobletes finde -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">Permitir dobletes de fin de semana</div>
+          <div class="rule-desc">Permite guardia el día N y el día N+2 cuando al menos uno de los dos es sábado o domingo.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-dobleteFinde-permitir" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="rule-sub" id="rg-dobleteFinde-sub" style="display:none;align-items:center;gap:10px">
+        <label class="toggle" style="flex-shrink:0">
+          <input type="checkbox" id="rg-dobleteFinde-maxPP-activo" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+        <span style="font-size:13px">Límite de dobletes finde por persona:</span>
+        <input type="number" id="rg-dobleteFinde-maxPP-valor" min="1" max="10" value="1" onchange="saveReglas()">
+      </div>
+    </div>
+
+    <!-- Regla: Tripletes -->
+    <div class="rule-card" id="rg-tripletes-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">Permitir tripletes</div>
+          <div class="rule-desc">Tres guardias con el patrón N, N+2, N+4 (dos días de descanso distribuidos). Solo disponible cuando algún tipo de doblete está activo.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-tripletes-permitir" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Regla: Sobrescribir -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">Sobrescribir asignaciones existentes</div>
+          <div class="rule-desc">Si está activo, la auto-asignación reemplazará todas las guardias ya asignadas en el mes. Si está desactivado, solo rellena los huecos vacíos.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-sobrescribir" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -388,6 +577,20 @@ const COLORS = [
 const AUS_ICONS = { master:'🎓', curso:'📚', congreso:'🏛', otro:'📋' };
 const AUS_LABELS = { master:'Máster', curso:'Curso', congreso:'Congreso', otro:'Otro' };
 
+function defaultReglas() {
+  return {
+    incluirRotando: false,
+    rotandoIds: [],
+    maxFinde: { activo: false, valor: 2 },
+    maxTotal: { activo: false, tipo: 'global', valor: 5, custom: {} },
+    respetarBloqueos: { activo: true, mecanismo: 'menos-guardias' },
+    dobletes: { permitir: false, maxPorPersona: { activo: false, valor: 1 } },
+    dobleteFinde: { permitir: false, maxPorPersona: { activo: false, valor: 1 } },
+    tripletes: { permitir: false },
+    sobrescribir: false
+  };
+}
+
 let state = loadState();
 
 function loadState() {
@@ -397,18 +600,20 @@ function loadState() {
       const d = JSON.parse(s);
       if (!d.ausencias) d.ausencias = [];
       if (!d.sinGuardia) d.sinGuardia = {};
+      if (!d.reglas) d.reglas = defaultReglas();
       return d;
     }
-    // migrar v2
     const v2 = localStorage.getItem('guardias_v2');
     if (v2) {
       const d = JSON.parse(v2);
       d.ausencias = [];
+      d.reglas = defaultReglas();
       return d;
     }
   } catch(e) {}
   return {
     residentes: [], asignaciones: {}, solicitudes: {}, sinGuardia: {}, ausencias: [],
+    reglas: defaultReglas(),
     calMes: new Date().getMonth(), calAnio: new Date().getFullYear()
   };
 }
@@ -426,6 +631,10 @@ function getColor(idx) { return COLORS[idx % COLORS.length]; }
 function todayStr() {
   const t = new Date();
   return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+}
+
+function getDateStrFull(dt) {
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 }
 
 function esc(s) {
@@ -468,6 +677,7 @@ function showTab(name, btn) {
   if (name === 'solicitudes') renderSolicitudes();
   if (name === 'estadisticas') renderStats();
   if (name === 'residentes') renderResidentes();
+  if (name === 'reglas') renderReglas();
 }
 
 // =============================================
@@ -931,7 +1141,6 @@ function renderStats() {
     return ky === sy && km === sm;
   }
 
-  // Construir stats por persona
   const statsMap = {};
   state.residentes.forEach(r => {
     statsMap[r.id] = {
@@ -942,7 +1151,6 @@ function renderStats() {
     };
   });
 
-  // Asignaciones
   for (const [key, resId] of Object.entries(state.asignaciones)) {
     if (!statsMap[resId]) continue;
     const parts = key.split('_');
@@ -962,7 +1170,6 @@ function renderStats() {
     }
   }
 
-  // Ausencias
   state.residentes.forEach(r => {
     if (!statsMap[r.id]) return;
     const { total, byType } = diasAusenciaEnPeriodo(r.id, relevante);
@@ -975,7 +1182,6 @@ function renderStats() {
   const totalAus = arr.reduce((a,b) => a + b.ausencias.total, 0);
   const maxGuardias = Math.max(...arr.map(x => x.guardias), 1);
 
-  // --- BLOQUE 1: Resumen global ---
   let html = `
   <div class="section-title">📌 Resumen global</div>
   <div class="stats-grid">
@@ -986,7 +1192,6 @@ function renderStats() {
     <div class="stat-card"><div class="stat-num">${state.residentes.length}</div><div class="stat-label">Residentes</div></div>
   </div>`;
 
-  // --- BLOQUE 2: Por persona ---
   html += `<div class="section-title">👤 Por residente</div>
   <div class="stats-tabla-wrapper">
   <table>
@@ -1035,7 +1240,6 @@ function renderStats() {
 
   html += `</tbody></table></div>`;
 
-  // --- BLOQUE 3: Por año de residencia ---
   const porAnio = {};
   arr.forEach(s => {
     if (!porAnio[s.anio]) porAnio[s.anio] = { guardias:0, buscas:0, finde:0, ausTotal:0, ausMaster:0, ausCurso:0, ausCongreso:0, ausOtro:0, n:0 };
@@ -1082,7 +1286,6 @@ function renderStats() {
       <td style="text-align:center">${(pa.ausOtro/n).toFixed(1)}</td>
     </tr>`;
 
-    // sub-filas por residente dentro del año
     arr.filter(s => s.anio === a).forEach(s => {
       const color = getColor(s.colorIdx);
       html += `<tr>
@@ -1101,6 +1304,332 @@ function renderStats() {
 
   html += `</tbody></table></div>`;
   content.innerHTML = html;
+}
+
+// =============================================
+// REGLAS
+// =============================================
+function renderReglas() {
+  const R = state.reglas;
+  document.getElementById('rg-incluirRotando').checked = R.incluirRotando;
+  document.getElementById('rg-maxFinde-activo').checked = R.maxFinde.activo;
+  document.getElementById('rg-maxFinde-valor').value = R.maxFinde.valor;
+  document.getElementById('rg-maxTotal-activo').checked = R.maxTotal.activo;
+  document.getElementById('rg-maxTotal-valor').value = R.maxTotal.valor;
+  document.querySelectorAll('input[name="rg-maxTotal-tipo"]').forEach(r => { r.checked = r.value === R.maxTotal.tipo; });
+  document.getElementById('rg-respetarBloqueos-activo').checked = R.respetarBloqueos.activo;
+  document.getElementById('rg-respetarBloqueos-mec').value = R.respetarBloqueos.mecanismo;
+  document.getElementById('rg-dobletes-permitir').checked = R.dobletes.permitir;
+  document.getElementById('rg-dobletes-maxPP-activo').checked = R.dobletes.maxPorPersona.activo;
+  document.getElementById('rg-dobletes-maxPP-valor').value = R.dobletes.maxPorPersona.valor;
+  document.getElementById('rg-dobleteFinde-permitir').checked = R.dobleteFinde.permitir;
+  document.getElementById('rg-dobleteFinde-maxPP-activo').checked = R.dobleteFinde.maxPorPersona.activo;
+  document.getElementById('rg-dobleteFinde-maxPP-valor').value = R.dobleteFinde.maxPorPersona.valor;
+  document.getElementById('rg-tripletes-permitir').checked = R.tripletes.permitir;
+  document.getElementById('rg-sobrescribir').checked = R.sobrescribir;
+  renderRotandoChecks();
+  renderCustomMaxRows();
+  updateReglasVisibility();
+}
+
+function saveReglas() {
+  const R = state.reglas;
+  R.incluirRotando = document.getElementById('rg-incluirRotando').checked;
+  R.maxFinde.activo = document.getElementById('rg-maxFinde-activo').checked;
+  R.maxFinde.valor = parseInt(document.getElementById('rg-maxFinde-valor').value) || 2;
+  R.maxTotal.activo = document.getElementById('rg-maxTotal-activo').checked;
+  R.maxTotal.valor = parseInt(document.getElementById('rg-maxTotal-valor').value) || 5;
+  const tipoRadio = document.querySelector('input[name="rg-maxTotal-tipo"]:checked');
+  if (tipoRadio) R.maxTotal.tipo = tipoRadio.value;
+  R.respetarBloqueos.activo = document.getElementById('rg-respetarBloqueos-activo').checked;
+  R.respetarBloqueos.mecanismo = document.getElementById('rg-respetarBloqueos-mec').value;
+  R.dobletes.permitir = document.getElementById('rg-dobletes-permitir').checked;
+  R.dobletes.maxPorPersona.activo = document.getElementById('rg-dobletes-maxPP-activo').checked;
+  R.dobletes.maxPorPersona.valor = parseInt(document.getElementById('rg-dobletes-maxPP-valor').value) || 1;
+  R.dobleteFinde.permitir = document.getElementById('rg-dobleteFinde-permitir').checked;
+  R.dobleteFinde.maxPorPersona.activo = document.getElementById('rg-dobleteFinde-maxPP-activo').checked;
+  R.dobleteFinde.maxPorPersona.valor = parseInt(document.getElementById('rg-dobleteFinde-maxPP-valor').value) || 1;
+  R.tripletes.permitir = document.getElementById('rg-tripletes-permitir').checked;
+  R.sobrescribir = document.getElementById('rg-sobrescribir').checked;
+  save();
+  renderRotandoChecks();
+  renderCustomMaxRows();
+  updateReglasVisibility();
+}
+
+function updateReglasVisibility() {
+  const R = state.reglas;
+  document.getElementById('rg-rotandoIds-sub').style.display = R.incluirRotando ? 'block' : 'none';
+  document.getElementById('rg-maxFinde-sub').style.display = R.maxFinde.activo ? 'flex' : 'none';
+  document.getElementById('rg-maxTotal-sub').style.display = R.maxTotal.activo ? 'flex' : 'none';
+  document.getElementById('rg-respetarBloqueos-sub').style.display = R.respetarBloqueos.activo ? 'flex' : 'none';
+  document.getElementById('rg-dobletes-sub').style.display = R.dobletes.permitir ? 'flex' : 'none';
+  document.getElementById('rg-dobleteFinde-sub').style.display = R.dobleteFinde.permitir ? 'flex' : 'none';
+
+  const tripletesEnabled = R.dobletes.permitir || R.dobleteFinde.permitir;
+  const tc = document.getElementById('rg-tripletes-card');
+  tc.classList.toggle('rule-disabled', !tripletesEnabled);
+  if (!tripletesEnabled) {
+    R.tripletes.permitir = false;
+    document.getElementById('rg-tripletes-permitir').checked = false;
+  }
+
+  // Custom rows visibility
+  const isCustom = R.maxTotal.tipo === 'custom';
+  const globalInp = document.getElementById('rg-maxTotal-valor');
+  if (globalInp) globalInp.closest('label').style.display = isCustom ? 'none' : 'flex';
+  const customRows = document.getElementById('rg-maxTotal-custom-rows');
+  if (customRows) customRows.style.display = isCustom ? 'block' : 'none';
+}
+
+function renderRotandoChecks() {
+  const cont = document.getElementById('rg-rotandoIds-checks');
+  if (!cont) return;
+  const rotando = state.residentes.filter(r => r.rotaInicio && r.rotaFin);
+  if (rotando.length === 0) {
+    cont.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Ningún residente tiene rotación externa configurada.</span>';
+    return;
+  }
+  cont.innerHTML = rotando.map(r => {
+    const checked = state.reglas.rotandoIds.includes(r.id) ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:5px;font-size:13px;background:white;padding:4px 8px;border-radius:5px;border:1px solid var(--border)">
+      <input type="checkbox" ${checked} onchange="toggleRotandoId('${r.id}', this.checked)" style="width:auto;padding:0;border:none;background:transparent">
+      ${esc(r.nombre)} <span class="badge badge-${r.anio.toLowerCase()}">${r.anio}</span>
+    </label>`;
+  }).join('');
+}
+
+function toggleRotandoId(id, checked) {
+  if (checked) {
+    if (!state.reglas.rotandoIds.includes(id)) state.reglas.rotandoIds.push(id);
+  } else {
+    state.reglas.rotandoIds = state.reglas.rotandoIds.filter(x => x !== id);
+  }
+  save();
+}
+
+function renderCustomMaxRows() {
+  const cont = document.getElementById('rg-maxTotal-custom-rows');
+  if (!cont || state.reglas.maxTotal.tipo !== 'custom') return;
+  if (state.residentes.length === 0) {
+    cont.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Añade residentes primero.</span>';
+    return;
+  }
+  cont.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:8px">' + state.residentes.map(r => {
+    const val = state.reglas.maxTotal.custom[r.id] ?? state.reglas.maxTotal.valor;
+    return `<label style="display:flex;align-items:center;gap:6px;font-size:13px;background:white;padding:5px 10px;border-radius:5px;border:1px solid var(--border)">
+      <span style="min-width:110px">${esc(r.nombre)} <span class="badge badge-${r.anio.toLowerCase()}">${r.anio}</span></span>
+      <input type="number" min="0" max="31" value="${val}" onchange="setCustomMax('${r.id}', this.value)" style="width:60px;padding:4px 6px;font-size:13px">
+    </label>`;
+  }).join('') + '</div>';
+}
+
+function setCustomMax(resId, val) {
+  state.reglas.maxTotal.custom[resId] = parseInt(val) || 0;
+  save();
+}
+
+// =============================================
+// AUTO-ASIGNACIÓN
+// =============================================
+function countDobletes(resId, tipo) {
+  const y = state.calAnio, m = state.calMes;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  let count = 0;
+  for (let d = 3; d <= daysInMonth; d++) {
+    const ds = getDateStrFull(new Date(y, m, d));
+    const ds2 = getDateStrFull(new Date(y, m, d - 2));
+    if (state.asignaciones[ds + '_guardia'] === resId &&
+        state.asignaciones[ds2 + '_guardia'] === resId) {
+      const dow = new Date(y, m, d).getDay();
+      const dow2 = new Date(y, m, d - 2).getDay();
+      const isF = (dow === 0 || dow === 6) || (dow2 === 0 || dow2 === 6);
+      if (tipo === 'lab' && !isF) count++;
+      if (tipo === 'finde' && isF) count++;
+    }
+  }
+  return count;
+}
+
+function getElegiblesAuto(ds, tipo, isFinde, cntGuardias, cntFinde, yaEnOtroSlotId) {
+  const R = state.reglas;
+  const dt = new Date(ds + 'T00:00:00');
+  const y = dt.getFullYear(), m = dt.getMonth(), d = dt.getDate();
+
+  const prevDs  = getDateStrFull(new Date(y, m, d - 1));
+  const prev2Dt = new Date(y, m, d - 2);
+  const prev2Ds = getDateStrFull(prev2Dt);
+  const prev4Ds = getDateStrFull(new Date(y, m, d - 4));
+
+  const prev2Dow = prev2Dt.getDay();
+  const isFindeP2 = prev2Dow === 0 || prev2Dow === 6;
+
+  return state.residentes.filter(r => {
+    // Ausencia: excluir siempre
+    if (getAusencia(r.id, ds)) return false;
+
+    // Rotación: excluir salvo configuración
+    if (isRotandoFuera(r, ds)) {
+      if (!R.incluirRotando) return false;
+      if (!R.rotandoIds.includes(r.id)) return false;
+    }
+
+    // No asignar al ya en el otro slot hoy
+    if (yaEnOtroSlotId && r.id === yaEnOtroSlotId) return false;
+
+    // No consecutivas: mismo tipo
+    if (tipo === 'guardia' && state.asignaciones[prevDs + '_guardia'] === r.id) return false;
+    if (tipo === 'busca'   && state.asignaciones[prevDs + '_busca']   === r.id) return false;
+
+    // Reglas de doblete/triplete solo aplican a guardias
+    if (tipo === 'guardia') {
+      const had2 = state.asignaciones[prev2Ds + '_guardia'] === r.id;
+      if (had2) {
+        const isDobletefinde = isFinde || isFindeP2;
+        if (!isDobletefinde) {
+          // Doblete laborable
+          if (!R.dobletes.permitir) return false;
+          if (R.dobletes.maxPorPersona.activo) {
+            if (countDobletes(r.id, 'lab') >= R.dobletes.maxPorPersona.valor) return false;
+          }
+        } else {
+          // Doblete finde
+          if (!R.dobleteFinde.permitir) return false;
+          if (R.dobleteFinde.maxPorPersona.activo) {
+            if (countDobletes(r.id, 'finde') >= R.dobleteFinde.maxPorPersona.valor) return false;
+          }
+        }
+        // Triplete: habría doblete, verificar si también tuvo guardia en D-4
+        const had4 = state.asignaciones[prev4Ds + '_guardia'] === r.id;
+        if (had4 && !R.tripletes.permitir) return false;
+      }
+    }
+
+    // Máximo total de guardias
+    if (tipo === 'guardia' && R.maxTotal.activo) {
+      const max = R.maxTotal.tipo === 'custom'
+        ? (R.maxTotal.custom[r.id] ?? R.maxTotal.valor)
+        : R.maxTotal.valor;
+      if ((cntGuardias[r.id] || 0) >= max) return false;
+    }
+
+    // Máximo finde
+    if (tipo === 'guardia' && R.maxFinde.activo && isFinde) {
+      if ((cntFinde[r.id] || 0) >= R.maxFinde.valor) return false;
+    }
+
+    return true;
+  });
+}
+
+function rankElegiblesAuto(elegibles, ds, cntGuardias, cntFinde) {
+  const R = state.reglas;
+  const anioOrd = { R1:1, R2:2, R3:3, R4:4, R5:5 };
+  const arr = [...elegibles];
+
+  arr.sort((a, b) => {
+    // Preferir residentes sin bloqueos primero
+    if (R.respetarBloqueos.activo) {
+      const aBlk = !!state.solicitudes[ds + '_' + a.id];
+      const bBlk = !!state.solicitudes[ds + '_' + b.id];
+      if (aBlk !== bBlk) return aBlk ? 1 : -1;
+      const aSG = !!state.sinGuardia[ds + '_' + a.id];
+      const bSG = !!state.sinGuardia[ds + '_' + b.id];
+      if (aSG !== bSG) return aSG ? 1 : -1;
+    }
+
+    // Tiebreaker según mecanismo
+    const mec = R.respetarBloqueos.mecanismo;
+    if (mec === 'menos-guardias') return (cntGuardias[a.id]||0) - (cntGuardias[b.id]||0);
+    if (mec === 'menos-finde')    return (cntFinde[a.id]||0)    - (cntFinde[b.id]||0);
+    if (mec === 'R-mayor') return (anioOrd[b.anio]||0) - (anioOrd[a.anio]||0);
+    if (mec === 'R-menor') return (anioOrd[a.anio]||0) - (anioOrd[b.anio]||0);
+    if (mec === 'aleatorio') return Math.random() - 0.5;
+    return 0;
+  });
+
+  return arr;
+}
+
+function autoAsignar() {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  if (state.residentes.length === 0) {
+    alert('Añade residentes antes de usar la auto-asignación.');
+    return;
+  }
+
+  const R = state.reglas;
+  const nombreMes = `${months[state.calMes]} ${state.calAnio}`;
+  const msgSobre = R.sobrescribir
+    ? '⚠️ Las asignaciones existentes serán REEMPLAZADAS.'
+    : 'Solo se rellenarán los huecos vacíos (asignaciones existentes se conservan).';
+
+  if (!confirm(`⚡ Auto-asignar: ${nombreMes}\n\n${msgSobre}\n\n¿Continuar?`)) return;
+
+  const y = state.calAnio, m = state.calMes;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const prefijo = `${y}-${String(m+1).padStart(2,'0')}`;
+
+  // Inicializar contadores de guardias del mes
+  const cntGuardias = {}, cntFinde = {};
+  state.residentes.forEach(r => { cntGuardias[r.id] = 0; cntFinde[r.id] = 0; });
+
+  if (R.sobrescribir) {
+    // Borrar asignaciones del mes antes de empezar
+    for (const k of Object.keys(state.asignaciones)) {
+      if (k.startsWith(prefijo)) delete state.asignaciones[k];
+    }
+  } else {
+    // Contar asignaciones existentes (que no se tocarán)
+    for (const [key, resId] of Object.entries(state.asignaciones)) {
+      if (!key.startsWith(prefijo) || !key.endsWith('_guardia')) continue;
+      const dateStr = key.slice(0, -8);
+      const dow = new Date(dateStr + 'T00:00:00').getDay();
+      if (cntGuardias[resId] !== undefined) {
+        cntGuardias[resId]++;
+        if (dow === 0 || dow === 6) cntFinde[resId]++;
+      }
+    }
+  }
+
+  let asignados = 0, sinElegibles = 0, omitidos = 0;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow = new Date(y, m, d).getDay();
+    const isFinde = dow === 0 || dow === 6;
+
+    // Solo se auto-asignan guardias; el busca se gestiona manualmente
+    for (const tipo of ['guardia']) {
+      const key = ds + '_' + tipo;
+
+      if (state.asignaciones[key] && !R.sobrescribir) { omitidos++; continue; }
+
+      const yaEnOtroSlotId = null; // busca no se auto-asigna, no hay colisión
+
+      const elegibles = getElegiblesAuto(ds, tipo, isFinde, cntGuardias, cntFinde, yaEnOtroSlotId);
+
+      if (elegibles.length === 0) { sinElegibles++; continue; }
+
+      const ranked = rankElegiblesAuto(elegibles, ds, cntGuardias, cntFinde);
+      const chosen = ranked[0];
+
+      state.asignaciones[key] = chosen.id;
+      asignados++;
+
+      cntGuardias[chosen.id] = (cntGuardias[chosen.id] || 0) + 1;
+      if (isFinde) cntFinde[chosen.id] = (cntFinde[chosen.id] || 0) + 1;
+    }
+  }
+
+  save();
+  renderCalendario();
+
+  const lines = [`✅ Auto-asignación completada — ${nombreMes}`, ''];
+  lines.push(`• ${asignados} asignaciones realizadas`);
+  if (omitidos > 0) lines.push(`• ${omitidos} slots ya asignados conservados`);
+  if (sinElegibles > 0) lines.push(`• ${sinElegibles} slots sin residentes elegibles (quedan vacíos)`);
+  alert(lines.join('\n'));
 }
 
 // =============================================
@@ -1128,6 +1657,7 @@ function borrarTodo() {
   if (!confirm('Segunda confirmación: ¿seguro que quieres borrar todo?')) return;
   state = {
     residentes: [], asignaciones: {}, solicitudes: {}, sinGuardia: {}, ausencias: [],
+    reglas: defaultReglas(),
     calMes: new Date().getMonth(), calAnio: new Date().getFullYear()
   };
   localStorage.removeItem('guardias_v2');
@@ -1157,6 +1687,8 @@ function importarDatos(event) {
       const data = JSON.parse(e.target.result);
       if (!data.residentes || !data.asignaciones) throw new Error('Formato inválido');
       if (!data.ausencias) data.ausencias = [];
+      if (!data.sinGuardia) data.sinGuardia = {};
+      if (!data.reglas) data.reglas = defaultReglas();
       if (!confirm(`¿Importar datos? Se reemplazarán los datos actuales (${data.residentes.length} residente/s).`)) return;
       state = data;
       save(); renderResidentes();
