@@ -169,6 +169,21 @@
   .rule-sub select { font-size: 13px; }
   .rule-sub input[type=number] { width: 68px; padding: 5px 8px; font-size: 13px; }
   .rule-disabled { opacity: 0.45; pointer-events: none; }
+
+  /* GRÁFICAS */
+  .chart-section { display: flex; flex-wrap: wrap; gap: 36px; padding: 8px 0; overflow-x: auto; }
+  .chart-box { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+
+  /* PRINT */
+  @media print {
+    header, nav, .no-print { display: none !important; }
+    .tab-content:not(.active) { display: none !important; }
+    .tab-content.active { display: block !important; }
+    main { padding: 0; max-width: 100%; }
+    body { background: white; }
+    .card { box-shadow: none; border: 1px solid #ddd; }
+    .chart-box { box-shadow: none; }
+  }
 </style>
 </head>
 <body>
@@ -257,8 +272,8 @@
   </div>
 
   <div class="card" style="margin-top:0">
-    <div class="card-title">🙋 Preferencia sin guardia</div>
-    <div class="alert" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;margin-bottom:12px">El residente <strong>estará en el hospital</strong> pero prefiere no tener guardia esos días. Totalmente orientativo.</div>
+    <div class="card-title">🚫 Bloqueos</div>
+    <div class="alert" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;margin-bottom:12px">El residente solicita no tener guardia esos días.</div>
     <span id="sg-conflictos-badge" class="badge" style="background:#fff7ed;color:#9a3412;margin-bottom:10px;display:inline-block"></span>
     <div class="sol-grid" id="sg-grid"></div>
   </div>
@@ -272,9 +287,10 @@
       <h2 id="cal-titulo"></h2>
       <button class="btn btn-outline" onclick="cambiarMes(1)">▶</button>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select id="cal-mes-jump" onchange="jumpToMes(this.value)"></select>
-        <button class="btn btn-primary btn-sm" onclick="autoAsignar()">⚡ Auto-asignar</button>
-        <button class="btn btn-outline" style="font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="borrarMes()">🗑 Borrar mes</button>
+        <select id="cal-mes-jump" onchange="jumpToMes(this.value)" class="no-print"></select>
+        <button class="btn btn-primary btn-sm no-print" onclick="autoAsignar()">⚡ Auto-asignar</button>
+        <button class="btn btn-outline btn-sm no-print" onclick="imprimirCalendario()">🖨️ PDF cuadrante</button>
+        <button class="btn btn-outline no-print" style="font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="borrarMes()">🗑 Borrar mes</button>
       </div>
     </div>
     <div id="cal-legend" class="legend"></div>
@@ -300,8 +316,8 @@
 <!-- TAB ESTADÍSTICAS -->
 <div id="tab-estadisticas" class="tab-content">
   <div class="card">
-    <div class="card-title">📊 Estadísticas</div>
-    <div class="mes-selector">
+    <div class="card-title">📊 Estadísticas <button class="btn btn-outline btn-sm no-print" style="margin-left:auto" onclick="imprimirEstadisticas()">🖨️ Exportar informe PDF</button></div>
+    <div class="mes-selector no-print">
       <label style="font-weight:600">Período:</label>
       <select id="stats-periodo" onchange="renderStats()">
         <option value="mes">Mes seleccionado</option>
@@ -1179,6 +1195,7 @@ function renderStats() {
     statsMap[r.id] = {
       nombre: r.nombre, anio: r.anio, colorIdx: r.colorIdx ?? state.residentes.indexOf(r),
       guardias: 0, buscas: 0, guardiasFinde: 0, guardiasLab: 0, guardiasRota: 0,
+      dobletesLab: 0, dobleteFinde: 0,
       rotaInicio: r.rotaInicio || null, rotaFin: r.rotaFin || null,
       ausencias: { total: 0, master: 0, curso: 0, congreso: 0, otro: 0 }
     };
@@ -1209,6 +1226,32 @@ function renderStats() {
     statsMap[r.id].ausencias = { total, ...byType };
   });
 
+  // Contar dobletes por persona
+  const guardiaDatesByRes = {};
+  state.residentes.forEach(r => { guardiaDatesByRes[r.id] = []; });
+  for (const [key, resId] of Object.entries(state.asignaciones)) {
+    if (!guardiaDatesByRes[resId]) continue;
+    const parts = key.split('_');
+    const tipo = parts[parts.length - 1];
+    if (tipo !== 'guardia' && tipo !== 'guardia2') continue;
+    const dateStr = parts.slice(0, -1).join('_');
+    if (!relevante(dateStr) || guardiaDatesByRes[resId].includes(dateStr)) continue;
+    guardiaDatesByRes[resId].push(dateStr);
+  }
+  for (const [resId, dates] of Object.entries(guardiaDatesByRes)) {
+    dates.sort();
+    for (let i = 0; i < dates.length - 1; i++) {
+      for (let j = i + 1; j < dates.length; j++) {
+        const d1 = new Date(dates[i] + 'T00:00:00');
+        const d2 = new Date(dates[j] + 'T00:00:00');
+        if ((d2 - d1) / 86400000 !== 2) continue;
+        const isF = (d1.getDay()===0||d1.getDay()===6) || (d2.getDay()===0||d2.getDay()===6);
+        if (isF) statsMap[resId].dobleteFinde++;
+        else statsMap[resId].dobletesLab++;
+      }
+    }
+  }
+
   const arr = Object.values(statsMap);
   const totalGuardias = arr.reduce((a,b) => a + b.guardias, 0);
   const totalBuscas = arr.reduce((a,b) => a + b.buscas, 0);
@@ -1236,6 +1279,8 @@ function renderStats() {
         <th style="text-align:center">Lab.</th>
         <th style="text-align:center">Finde</th>
         <th style="text-align:center">Buscas</th>
+        <th style="text-align:center">Dobl. lab</th>
+        <th style="text-align:center">Dobl. finde</th>
         <th>✈ Rotación externa</th>
         <th style="text-align:center">Aus. (días)</th>
         <th style="min-width:120px">Distribución</th>
@@ -1254,6 +1299,8 @@ function renderStats() {
       <td style="text-align:center">${s.guardiasLab}</td>
       <td style="text-align:center">${s.guardiasFinde}</td>
       <td style="text-align:center;font-weight:700">${s.buscas}</td>
+      <td style="text-align:center">${s.dobletesLab > 0 ? `<span style="font-weight:700;color:var(--warning)">${s.dobletesLab}</span>` : '—'}</td>
+      <td style="text-align:center">${s.dobleteFinde > 0 ? `<span style="font-weight:700;color:var(--danger)">${s.dobleteFinde}</span>` : '—'}</td>
       <td>${s.rotaInicio ? `<span class="badge badge-rotando">✈ ${s.rotaInicio} → ${s.rotaFin}</span>${s.guardiasRota > 0 ? `<br><span style="font-size:11px;color:var(--text-muted)">${s.guardiasRota} guardia${s.guardiasRota>1?'s':''} durante rotación</span>` : ''}` : '<span style="color:var(--text-muted)">—</span>'}</td>
       <td style="text-align:center;font-weight:700">${s.ausencias.total > 0 ? s.ausencias.total : '—'}</td>
       <td>
@@ -1267,9 +1314,10 @@ function renderStats() {
 
   const porAnio = {};
   arr.forEach(s => {
-    if (!porAnio[s.anio]) porAnio[s.anio] = { guardias:0, buscas:0, finde:0, ausTotal:0, ausMaster:0, ausCurso:0, ausCongreso:0, ausOtro:0, n:0 };
+    if (!porAnio[s.anio]) porAnio[s.anio] = { guardias:0, buscas:0, finde:0, dobLab:0, dobFinde:0, ausTotal:0, ausMaster:0, ausCurso:0, ausCongreso:0, ausOtro:0, n:0 };
     const pa = porAnio[s.anio];
     pa.guardias += s.guardias; pa.buscas += s.buscas; pa.finde += s.guardiasFinde;
+    pa.dobLab += s.dobletesLab; pa.dobFinde += s.dobleteFinde;
     pa.ausTotal += s.ausencias.total; pa.ausMaster += s.ausencias.master;
     pa.ausCurso += s.ausencias.curso; pa.ausCongreso += s.ausencias.congreso;
     pa.ausOtro += s.ausencias.otro; pa.n++;
@@ -1285,6 +1333,8 @@ function renderStats() {
         <th style="text-align:center">Media guardias</th>
         <th style="text-align:center">Media finde</th>
         <th style="text-align:center">Media buscas</th>
+        <th style="text-align:center">Dobl. lab</th>
+        <th style="text-align:center">Dobl. finde</th>
         <th style="text-align:center">Media aus. (días)</th>
       </tr>
     </thead>
@@ -1300,6 +1350,8 @@ function renderStats() {
       <td style="text-align:center;font-weight:800;color:var(--primary)">${(pa.guardias/n).toFixed(1)}</td>
       <td style="text-align:center">${(pa.finde/n).toFixed(1)}</td>
       <td style="text-align:center">${(pa.buscas/n).toFixed(1)}</td>
+      <td style="text-align:center;font-weight:700;color:var(--warning)">${pa.dobLab || '—'}</td>
+      <td style="text-align:center;font-weight:700;color:var(--danger)">${pa.dobFinde || '—'}</td>
       <td style="text-align:center;font-weight:700">${(pa.ausTotal/n).toFixed(1)}</td>
     </tr>`;
 
@@ -1310,13 +1362,72 @@ function renderStats() {
         <td style="text-align:center;font-size:12px">${s.guardias}</td>
         <td style="text-align:center;font-size:12px">${s.guardiasFinde}</td>
         <td style="text-align:center;font-size:12px">${s.buscas}</td>
+        <td style="text-align:center;font-size:12px;color:var(--warning)">${s.dobletesLab || '—'}</td>
+        <td style="text-align:center;font-size:12px;color:var(--danger)">${s.dobleteFinde || '—'}</td>
         <td style="text-align:center;font-size:12px">${s.ausencias.total || '—'}</td>
       </tr>`;
     });
   });
 
   html += `</tbody></table></div>`;
+
+  // Gráficas
+  const sortedG = [...arr].sort((a,b) => b.guardias - a.guardias);
+  const maxG = Math.max(...arr.map(x => x.guardias), 1);
+  const maxB = Math.max(...arr.map(x => x.buscas), 1);
+  const trunca = n => n.length > 17 ? n.slice(0,15) + '…' : n;
+
+  const c1 = svgBarChart('Guardias por residente  (barra roja = finde)',
+    sortedG.map(s => ({ label: trunca(s.nombre), value: s.guardias, sub: s.guardiasFinde, color: getColor(s.colorIdx) })), maxG);
+
+  const itemsB = sortedG.filter(s => s.buscas > 0)
+    .map(s => ({ label: trunca(s.nombre), value: s.buscas, sub: 0, color: getColor(s.colorIdx) }));
+  const c2 = svgBarChart('Buscas por residente', itemsB, maxB);
+
+  const c3Items = sortedG.filter(s => s.guardias > 0).map(s => ({
+    label: trunca(s.nombre),
+    value: s.guardiasLab,
+    sub: s.guardiasFinde,
+    color: getColor(s.colorIdx)
+  }));
+  const c3 = svgBarChart('Laborables vs finde por residente', c3Items, maxG);
+
+  html += `<div class="section-title">📈 Gráficas</div>
+  <div class="chart-section">
+    ${c1 ? `<div class="chart-box">${c1}</div>` : ''}
+    ${c2 ? `<div class="chart-box">${c2}</div>` : ''}
+    ${c3 ? `<div class="chart-box">${c3}</div>` : ''}
+  </div>`;
+
   content.innerHTML = html;
+}
+
+// =============================================
+// GRÁFICAS SVG
+// =============================================
+function svgBarChart(title, items, maxVal) {
+  if (!items.length) return '';
+  const lw = 148, bw = 270, bh = 22, gap = 5;
+  const H = items.length * (bh + gap) + 38;
+  const W = lw + bw + 60;
+  let rows = '';
+  items.forEach((it, i) => {
+    const y = 26 + i * (bh + gap);
+    const w1 = maxVal > 0 ? Math.round((it.value / maxVal) * bw) : 0;
+    rows += `<text x="${lw-6}" y="${y+bh/2+4}" text-anchor="end" font-size="10.5" fill="#374151">${it.label}</text>
+    <rect x="${lw}" y="${y}" width="${bw}" height="${bh}" fill="#f3f4f6" rx="3"/>`;
+    if (w1 > 0) rows += `<rect x="${lw}" y="${y}" width="${w1}" height="${bh}" fill="${it.color}" rx="3" opacity="0.85"/>`;
+    if (it.sub > 0) {
+      const w2 = Math.round((it.sub / maxVal) * bw);
+      rows += `<rect x="${lw}" y="${y+bh-5}" width="${w2}" height="5" fill="#b91c1c" rx="0" opacity="0.65"/>`;
+    }
+    const txt = it.sub > 0 ? `${it.value}  (${it.sub} finde)` : String(it.value);
+    rows += `<text x="${lw+w1+5}" y="${y+bh/2+4}" font-size="10" font-weight="700" fill="#1f2937">${txt}</text>`;
+  });
+  return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',sans-serif;overflow:visible;display:block">
+    <text x="${W/2}" y="15" text-anchor="middle" font-size="12" font-weight="700" fill="#111827">${title}</text>
+    ${rows}
+  </svg>`;
 }
 
 // =============================================
@@ -1681,6 +1792,93 @@ function autoAsignar() {
   if (omitidos > 0) lines.push(`• ${omitidos} slots ya asignados conservados`);
   if (sinElegibles > 0) lines.push(`• ${sinElegibles} slots sin residentes elegibles (quedan vacíos)`);
   alert(lines.join('\n'));
+}
+
+// =============================================
+// IMPRIMIR / PDF
+// =============================================
+function imprimirCalendario() {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const y = state.calAnio, m = state.calMes;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const firstDay = new Date(y, m, 1).getDay();
+  const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+
+  const resMap = {};
+  state.residentes.forEach((r, i) => { resMap[r.id] = { ...r, color: getColor(r.colorIdx ?? i) }; });
+
+  const cells = [];
+  for (let i = 0; i < startOffset; i++) cells.push('<td></td>');
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow = new Date(y, m, d).getDay();
+    const isWE = dow === 0 || dow === 6;
+    const gR  = resMap[state.asignaciones[ds + '_guardia']];
+    const g2R = resMap[state.asignaciones[ds + '_guardia2']];
+    const bR  = resMap[state.asignaciones[ds + '_busca']];
+    const slot = (icon, r) => r ? `<div style="background:${r.color};color:white;border-radius:3px;padding:1px 5px;font-size:9px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${icon} ${r.nombre}</div>` : '';
+    cells.push(`<td style="border:1px solid #e5e7eb;vertical-align:top;padding:4px 5px;background:${isWE?'#fff5f5':'white'}">
+      <div style="font-size:10px;font-weight:700;color:${isWE?'#c81e1e':'#6b7280'};margin-bottom:2px">${d}</div>
+      ${slot('🏥',gR)}${slot('👥',g2R)}${slot('📟',bR)}
+    </td>`);
+  }
+  while (cells.length % 7 !== 0) cells.push('<td></td>');
+
+  let rows = '';
+  for (let i = 0; i < cells.length; i += 7) rows += '<tr>' + cells.slice(i, i+7).join('') + '</tr>';
+
+  const legend = state.residentes.map((r,i) =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;font-size:9.5px;border:1px solid #e5e7eb;border-radius:4px;padding:2px 7px;background:white;margin:2px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${getColor(r.colorIdx??i)};flex-shrink:0"></span>${r.nombre} (${r.anio})
+    </span>`).join('');
+
+  const popup = window.open('', '_blank', 'width=1100,height=820');
+  if (!popup) { alert('Permite ventanas emergentes para generar el PDF.'); return; }
+  popup.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Cuadrante ${months[m]} ${y}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;padding:14px;background:white}
+    h1{font-size:17px;font-weight:700}
+    .sub{font-size:11px;color:#6b7280;margin:2px 0 10px}
+    table{width:100%;border-collapse:collapse;table-layout:fixed}
+    th{padding:5px 4px;font-size:10.5px;text-align:center;background:#f3f4f6;border:1px solid #e5e7eb}
+    td{min-height:66px;height:66px}
+    .legend{margin-top:10px;display:flex;flex-wrap:wrap;gap:0}
+    .btn-print{padding:6px 14px;background:#1a56db;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px}
+    @media print{@page{size:A4 landscape;margin:8mm} .no-print{display:none}}
+  </style></head><body>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+    <div>
+      <h1>🏥 Cuadrante de Guardias — ${months[m]} ${y}</h1>
+      <p class="sub">Cardiología · Residentes · ${new Date().toLocaleDateString('es-ES', {day:'numeric',month:'long',year:'numeric'})}</p>
+    </div>
+    <button class="btn-print no-print" onclick="window.print()">🖨️ Guardar como PDF</button>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th>
+      <th>Viernes</th><th style="color:#c81e1e;background:#fff5f5">Sábado</th><th style="color:#c81e1e;background:#fff5f5">Domingo</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="legend">${legend}</div>
+  <div style="margin-top:8px;font-size:9px;color:#9ca3af">🏥 Guardia &nbsp; 👥 Acompañante R1 &nbsp; 📟 Busca</div>
+  </body></html>`);
+  popup.document.close();
+}
+
+function imprimirEstadisticas() {
+  // Asegurar que la pestaña de estadísticas esté activa y renderizada
+  const tab = document.getElementById('tab-estadisticas');
+  if (!tab.classList.contains('active')) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+    tab.classList.add('active');
+    renderStats();
+  }
+  window.print();
 }
 
 // =============================================
