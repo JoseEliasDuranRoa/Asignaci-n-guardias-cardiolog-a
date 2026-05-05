@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guardias Cardiología</title>
+<title> Sistema de Gestión de Guardias</title>
 <style>
   :root {
     --bg: #f0f4f8;
@@ -190,8 +190,8 @@
 
 <header>
   <div>
-    <h1>🏥 Guardias Cardiología</h1>
-    <span>Gestión de guardias y busca · Residentes</span>
+    <h1> Sistema de gestión de guardias</h1>
+    <span></span>
   </div>
   <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
     <button class="btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);font-size:12px" onclick="exportarDatos()">⬇ Exportar</button>
@@ -265,14 +265,14 @@
   </div>
 
   <div class="card">
-    <div class="card-title">🏖 Vacaciones / días libres</div>
-    <div class="alert alert-info" style="margin-bottom:12px">El residente <strong>no estará en el hospital</strong> esos días. Se resalta en rojo cuando hay conflicto (≥⅓ del servicio).</div>
+    <div class="card-title">Vacaciones / días de asuntos propios</div>
+    <div class="alert alert-info" style="margin-bottom:12px">El residente no estará en el hospital esos días.</div>
     <span id="sol-conflictos-badge" class="badge" style="background:var(--danger-light);color:var(--danger);margin-bottom:10px;display:inline-block"></span>
     <div class="sol-grid" id="sol-grid"></div>
   </div>
 
   <div class="card" style="margin-top:0">
-    <div class="card-title">🚫 Bloqueos</div>
+    <div class="card-title">Bloqueos</div>
     <div class="alert" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;margin-bottom:12px">El residente solicita no tener guardia esos días.</div>
     <span id="sg-conflictos-badge" class="badge" style="background:#fff7ed;color:#9a3412;margin-bottom:10px;display:inline-block"></span>
     <div class="sol-grid" id="sg-grid"></div>
