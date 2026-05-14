@@ -2,7 +2,14 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d5b6f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Guardias">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230d5b6f'/%3E%3Cpath d='M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z' fill='white' transform='scale(0.7) translate(5.1 5.1)'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230d5b6f'/%3E%3Cpath d='M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z' fill='white' transform='scale(0.7) translate(5.1 5.1)'/%3E%3C/svg%3E">
 <title>Guardias · Sistema de gestión clínica</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -301,13 +308,404 @@
 
   /* PRINT */
   @media print {
-    header, nav, .no-print { display: none !important; }
+    header, nav, .no-print, .bottom-nav, .fab { display: none !important; }
     .tab-content:not(.active) { display: none !important; }
     .tab-content.active { display: block !important; }
     main { padding: 0; max-width: 100%; }
-    body { background: white; }
+    body { background: white; padding-bottom: 0; }
     .card { box-shadow: none; border: 1px solid #ddd; }
     .chart-box { box-shadow: none; }
+  }
+
+  /* =============================================
+     MOBILE / APP LAYER
+     Breakpoint: 768px → bottom nav, sheets, bigger tap targets
+     ============================================= */
+
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+    --bottom-nav-h: 60px;
+  }
+
+  /* Bottom nav: always-rendered but hidden on desktop */
+  .bottom-nav {
+    display: none;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 900;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    border-top: 1px solid var(--border);
+    padding: 6px 4px calc(6px + var(--safe-bot));
+    box-shadow: 0 -2px 12px -6px rgba(15,28,46,.12);
+  }
+  .bottom-nav-inner {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 2px;
+    max-width: 540px;
+    margin: 0 auto;
+  }
+  .bottom-nav button {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    padding: 6px 2px 4px;
+    cursor: pointer;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    transition: color .15s, background .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bottom-nav button svg {
+    width: 22px; height: 22px; stroke-width: 1.7;
+    transition: transform .18s;
+  }
+  .bottom-nav button.active {
+    color: var(--primary);
+    background: var(--primary-soft);
+  }
+  .bottom-nav button.active svg { stroke-width: 2.1; }
+  .bottom-nav button:active svg { transform: scale(0.9); }
+
+  /* Floating action button (mobile) */
+  .fab {
+    display: none;
+    position: fixed;
+    right: 16px;
+    bottom: calc(var(--bottom-nav-h) + 16px + var(--safe-bot));
+    z-index: 800;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 6px 18px -4px rgba(13,91,111,.5), 0 2px 4px rgba(15,28,46,.18);
+    align-items: center;
+    justify-content: center;
+    transition: transform .18s, background .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fab:active { transform: scale(0.92); background: var(--primary-hover); }
+  .fab svg { width: 22px; height: 22px; stroke-width: 2.2; }
+
+  /* Mobile-only / desktop-only utility */
+  .mobile-only { display: none; }
+  .desktop-only { display: initial; }
+
+  /* Mobile day-detail sheet content (built dynamically) */
+  .day-sheet-body { padding-top: 4px; }
+  .day-sheet-slot {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 14px;
+    background: var(--bg-soft);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: border-color .12s, background .12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .day-sheet-slot:active { background: var(--primary-soft); border-color: var(--primary); }
+  .day-sheet-slot .ds-tag {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--border-strong);
+    color: white; font-family: var(--mono); font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .day-sheet-slot .ds-body { flex: 1; min-width: 0; }
+  .day-sheet-slot .ds-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .day-sheet-slot .ds-name { font-size: 15px; font-weight: 600; color: var(--text); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .day-sheet-slot .ds-name.empty { color: var(--text-faint); font-weight: 500; font-style: italic; }
+  .day-sheet-slot .ds-chev { color: var(--text-faint); }
+
+  /* Solicitudes mobile view (per-resident) */
+  .sol-mobile { display: none; }
+  .sol-mobile .res-block {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: white;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .sol-mobile .res-head {
+    padding: 12px 14px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-soft);
+  }
+  .sol-mobile .res-name { font-weight: 600; font-size: 14px; flex: 1; }
+  .sol-mobile .res-count {
+    font-size: 11px; color: var(--text-muted);
+    font-family: var(--mono); font-weight: 600;
+    background: white; padding: 2px 8px; border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .sol-mobile .day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    padding: 10px;
+  }
+  .sol-mobile .day-cell {
+    aspect-ratio: 1;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: white;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: var(--text);
+    font-family: var(--mono);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .08s;
+    position: relative;
+  }
+  .sol-mobile .day-cell:active { transform: scale(0.92); }
+  .sol-mobile .day-cell.we { background: var(--bg-soft); color: #7a4a4a; }
+  .sol-mobile .day-cell.marked { background: #e8d8d4; color: #6b332c; border-color: #d8bdb6; }
+  .sol-mobile .day-cell.marked-sg { background: #ece3d2; color: #6b5328; border-color: #d6c8a8; }
+  .sol-mobile .day-cell .dow { font-size: 8.5px; font-weight: 500; opacity: 0.6; line-height: 1; margin-top: 2px; text-transform: uppercase; }
+
+  /* Pull/grab handle for bottom sheets on mobile */
+  .sheet-handle {
+    display: none;
+    width: 36px; height: 4px;
+    background: var(--border-strong);
+    border-radius: 2px;
+    margin: 0 auto 12px;
+  }
+
+  /* =============================================
+     ≤ 768px: full mobile layout
+     ============================================= */
+  @media (max-width: 768px) {
+    body { font-size: 14px; padding-bottom: calc(var(--bottom-nav-h) + var(--safe-bot)); }
+
+    /* Header: compact, sticky, safe-area aware */
+    header {
+      padding: 10px 14px calc(10px) 14px;
+      padding-top: calc(10px + var(--safe-top));
+      position: sticky; top: 0; z-index: 50;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .brand-mark { width: 32px; height: 32px; }
+    .brand-mark svg { width: 16px; height: 16px; }
+    .brand-text .name { font-size: 14px; }
+    .brand-text .tag { display: none; }
+    .header-divider { display: none; }
+    .header-meta { display: none; }
+    .header-actions { gap: 4px; }
+    .header-btn { padding: 7px 9px; font-size: 11.5px; }
+    .header-btn span,
+    .header-btn { font-size: 0; }
+    .header-btn svg { width: 16px; height: 16px; }
+    /* show only the icon */
+    .header-btn { display: inline-flex; gap: 0; padding: 8px; }
+    .header-btn::after { content: none; }
+
+    /* Top nav hidden — replaced by bottom nav */
+    nav { display: none; }
+    .bottom-nav { display: block; }
+
+    main {
+      padding: 14px 12px 30px;
+      max-width: 100%;
+    }
+
+    .card {
+      padding: 14px 14px;
+      border-radius: 14px;
+      margin-bottom: 12px;
+    }
+    .card-title { font-size: 13.5px; margin-bottom: 12px; }
+
+    /* Forms: stack and full-width inputs */
+    .form-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .form-row > .form-group { width: 100%; }
+    .form-row > .form-group input,
+    .form-row > .form-group select { width: 100% !important; }
+    .form-row > .btn { width: 100%; justify-content: center; padding: 11px 14px; }
+    input, select, textarea { font-size: 16px; padding: 11px 12px; } /* 16px = no zoom on iOS focus */
+
+    /* Buttons: bigger tap area */
+    .btn { padding: 10px 14px; font-size: 13.5px; }
+    .btn-sm { padding: 7px 11px; font-size: 12.5px; }
+
+    /* Residentes table → cards */
+    #tab-residentes .card:nth-child(2) table { display: none; }
+    #tab-residentes .card:nth-child(2)::after {
+      content: '';
+      display: block;
+    }
+    .res-card-list {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .res-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .res-card-head {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .res-card-head .swatch {
+      width: 30px; height: 30px; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .res-card-head .name { font-weight: 700; font-size: 15px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .res-card-meta {
+      display: flex; flex-wrap: wrap; gap: 6px;
+      font-size: 12px; color: var(--text-muted);
+    }
+    .res-card-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+    .res-card-actions .btn { padding: 9px 8px; font-size: 12px; justify-content: center; }
+
+    /* Calendar grid: compact on mobile */
+    .cal-header { gap: 8px; }
+    .cal-header h2 { font-size: 16px; min-width: 0; flex: 1; text-align: center; }
+    .cal-header > div[style*="margin-left:auto"] { width: 100%; justify-content: flex-start; gap: 6px; }
+    .cal-header select { width: 100%; flex: 1; }
+    .cal-grid { gap: 2px; }
+    .cal-day { min-height: 64px; padding: 4px 3px; border-radius: 6px; }
+    .cal-day .day-num { font-size: 10px; margin-bottom: 2px; }
+    .cal-slot {
+      padding: 2px 3px;
+      min-height: 16px;
+      border-radius: 4px;
+      margin-bottom: 2px;
+      gap: 0;
+    }
+    .cal-slot .slot-label { display: none; }
+    .cal-slot .slot-name {
+      font-size: 9.5px;
+      letter-spacing: -0.01em;
+    }
+    .cal-slot .slot-icon { display: none; }
+    .cal-slot.empty-slot .slot-name { font-size: 9px; }
+    .cal-dow { font-size: 9px; padding: 4px 2px; }
+    .legend { padding: 8px 10px; font-size: 11px; gap: 4px 10px; }
+    .legend-item { font-size: 11px; }
+
+    /* Solicitudes: hide horizontal table, show per-residente cards */
+    .sol-grid { display: none; }
+    .sol-mobile { display: block; }
+
+    /* Estadísticas: stack stats, hide secondary columns */
+    .stats-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .stat-card { padding: 12px 14px; }
+    .stat-card .stat-num { font-size: 22px; }
+    .stat-card .stat-label { font-size: 10px; }
+    .stats-tabla-wrapper { font-size: 12px; }
+    .stats-tabla-wrapper th, .stats-tabla-wrapper td {
+      padding: 8px 6px;
+      font-size: 12px;
+    }
+    /* hide low-priority columns */
+    .stats-tabla-wrapper th:nth-child(4),
+    .stats-tabla-wrapper td:nth-child(4),
+    .stats-tabla-wrapper th:nth-child(7),
+    .stats-tabla-wrapper td:nth-child(7),
+    .stats-tabla-wrapper th:nth-child(8),
+    .stats-tabla-wrapper td:nth-child(8),
+    .stats-tabla-wrapper th:nth-child(9),
+    .stats-tabla-wrapper td:nth-child(9),
+    .stats-tabla-wrapper th:nth-child(10),
+    .stats-tabla-wrapper td:nth-child(10) { display: none; }
+    .chart-section { grid-template-columns: 1fr; }
+    .chart-box { padding: 14px 14px 16px; }
+
+    /* Reglas mobile */
+    .rule-card { padding: 12px 14px; }
+    .rule-row { gap: 10px; }
+    .rule-title { font-size: 13px; }
+    .rule-desc { font-size: 11.5px; }
+    .rule-sub { padding: 10px 12px; gap: 8px; }
+    .rule-sub label:not(.toggle) { font-size: 12.5px; }
+
+    /* Modals → bottom sheets */
+    .modal-overlay {
+      align-items: flex-end;
+    }
+    .modal {
+      width: 100%;
+      max-width: 100%;
+      border-radius: 18px 18px 0 0;
+      padding: 18px 18px calc(18px + var(--safe-bot));
+      max-height: 86vh;
+      animation: sheetUp .25s cubic-bezier(.32,.72,0,1);
+    }
+    @keyframes sheetUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .sheet-handle { display: block; }
+    .modal-actions {
+      flex-direction: column-reverse;
+      gap: 8px;
+    }
+    .modal-actions .btn {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 14px;
+      justify-content: center;
+    }
+
+    /* Mes selector / toolbar */
+    .toolbar-strip { padding: 10px 12px; }
+    .mes-selector { gap: 8px; }
+    .mes-selector select { flex: 1; min-width: 0; }
+
+    /* Ausencia add form: stacked */
+    .aus-add-form .form-row .form-group input,
+    .aus-add-form .form-row .form-group select {
+      width: 100% !important;
+    }
+
+    /* hide some legend items on tiny screens */
+    .legend { overflow-x: auto; flex-wrap: nowrap; padding: 8px 10px; }
+    .legend-item { flex-shrink: 0; }
+
+    /* Hide page chrome only on print */
+    .desktop-only { display: none !important; }
+    .mobile-only { display: initial; }
+  }
+
+  /* Very small phones */
+  @media (max-width: 380px) {
+    .cal-day { min-height: 56px; padding: 3px 2px; }
+    .cal-slot .slot-name { font-size: 8.5px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .bottom-nav button { font-size: 9.5px; }
+    .bottom-nav button svg { width: 20px; height: 20px; }
+  }
+
+  /* Tablet polish (769–1024) */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    main { padding: 22px 20px 60px; }
+    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 </style>
 </head>
@@ -411,6 +809,7 @@
         <tbody id="tbody-residentes"></tbody>
       </table>
     </div>
+    <div class="res-card-list" id="res-card-list" style="display:none"></div>
   </div>
 </div>
 
@@ -427,6 +826,7 @@
     <div class="alert alert-info" style="margin-bottom:12px">El residente no estará en el hospital esos días.</div>
     <span id="sol-conflictos-badge" class="badge" style="background:var(--danger-light);color:var(--danger);margin-bottom:10px;display:inline-block"></span>
     <div class="sol-grid" id="sol-grid"></div>
+    <div class="sol-mobile" id="sol-mobile"></div>
   </div>
 
   <div class="card" style="margin-top:0">
@@ -434,6 +834,7 @@
     <div class="alert" style="background:#f4eee0;border:1px solid #e0d4b4;color:#6b5328;margin-bottom:12px">El residente solicita no tener guardia esos días.</div>
     <span id="sg-conflictos-badge" class="badge" style="background:#fff7ed;color:#9a3412;margin-bottom:10px;display:inline-block"></span>
     <div class="sol-grid" id="sg-grid"></div>
+    <div class="sol-mobile" id="sg-mobile"></div>
   </div>
 </div>
 
@@ -717,6 +1118,7 @@
 <!-- MODAL ASIGNACIÓN -->
 <div class="modal-overlay" id="modal-asig">
   <div class="modal">
+    <div class="sheet-handle"></div>
     <h3 id="modal-titulo">Asignar</h3>
     <p class="modal-subtitle" id="modal-subtitle"></p>
     <div class="form-group">
@@ -735,6 +1137,7 @@
 <!-- MODAL ROTACIÓN -->
 <div class="modal-overlay" id="modal-rota">
   <div class="modal">
+    <div class="sheet-handle"></div>
     <h3>Rotación externa</h3>
     <p class="modal-subtitle" id="modal-rota-nombre"></p>
     <div class="form-group">
@@ -756,6 +1159,7 @@
 <!-- MODAL AUSENCIAS -->
 <div class="modal-overlay" id="modal-aus">
   <div class="modal" style="width:500px">
+    <div class="sheet-handle"></div>
     <h3>Ausencias programadas</h3>
     <p class="modal-subtitle" id="modal-aus-nombre"></p>
     <div id="modal-aus-lista"></div>
@@ -2393,5 +2797,198 @@ function init() {
 
 init();
 </script>
+
+<!-- BOTTOM NAV (mobile only) -->
+<nav class="bottom-nav" id="bottom-nav" aria-label="Navegación móvil">
+  <div class="bottom-nav-inner">
+    <button data-tab="calendario" onclick="bottomNav('calendario')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>Calend.</span>
+    </button>
+    <button data-tab="solicitudes" onclick="bottomNav('solicitudes')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span>Solicit.</span>
+    </button>
+    <button data-tab="busca" onclick="bottomNav('busca')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/><circle cx="17" cy="13" r="1" fill="currentColor"/><path d="M9 2v3M15 2v3"/></svg>
+      <span>Busca</span>
+    </button>
+    <button data-tab="residentes" onclick="bottomNav('residentes')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Equipo</span>
+    </button>
+    <button data-tab="estadisticas" onclick="bottomNav('estadisticas')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span>Stats</span>
+    </button>
+    <button data-tab="reglas" onclick="bottomNav('reglas')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Reglas</span>
+    </button>
+  </div>
+</nav>
+
+<script>
+// =============================================
+// MOBILE LAYER
+// =============================================
+
+// Forward bottom-nav clicks to the existing top-nav logic so the same render path runs
+function bottomNav(name) {
+  const topBtns = document.querySelectorAll('header + nav button');
+  let target = null;
+  topBtns.forEach(b => {
+    const m = b.getAttribute('onclick') || '';
+    if (m.includes("showTab('" + name + "'")) target = b;
+  });
+  if (target) target.click();
+  else showTab(name, null);
+  syncBottomNav(name);
+  try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch(e) { window.scrollTo(0,0); }
+}
+
+function syncBottomNav(name) {
+  document.querySelectorAll('.bottom-nav button').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-tab') === name);
+  });
+}
+
+// Wrap existing showTab to also sync bottom nav + render mobile views
+(function patchShowTab() {
+  const original = window.showTab;
+  if (typeof original !== 'function') return;
+  window.showTab = function(name, btn) {
+    original(name, btn);
+    syncBottomNav(name);
+    if (name === 'solicitudes') renderSolicitudesMobile();
+    if (name === 'residentes') renderResidentesMobile();
+  };
+})();
+
+// =============================================
+// SOLICITUDES — vista por residente (móvil)
+// =============================================
+function renderSolicitudesMobile() {
+  const sel = document.getElementById('sol-mes-sel');
+  if (!sel || !sel.value) return;
+  const [y, m] = sel.value.split('-').map(Number);
+  const diasEnMes = new Date(y, m, 0).getDate();
+  const dias = [];
+  for (let d = 1; d <= diasEnMes; d++) {
+    const ds = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    dias.push({ d, ds, dow: new Date(y, m-1, d).getDay() });
+  }
+  const solMobile = document.getElementById('sol-mobile');
+  const sgMobile  = document.getElementById('sg-mobile');
+  if (solMobile) solMobile.innerHTML = buildSolMobile(dias, state.solicitudes, 'toggleSolicitudMobile', 'marked');
+  if (sgMobile)  sgMobile.innerHTML  = buildSolMobile(dias, state.sinGuardia,  'toggleSinGuardiaMobile', 'marked-sg');
+}
+
+function buildSolMobile(dias, store, toggleFn, cellMark) {
+  if (state.residentes.length === 0)
+    return '<p class="text-muted" style="padding:6px 2px">Añade residentes primero.</p>';
+  const DOW_LETTERS = ['D','L','M','X','J','V','S'];
+  return state.residentes.map((r, ri) => {
+    const color = getColor(r.colorIdx ?? ri);
+    const marcados = dias.filter(({ds}) => !!store[ds + '_' + r.id]).length;
+    let cells = '';
+    dias.forEach(({d, ds, dow}) => {
+      const key = ds + '_' + r.id;
+      const isWE = dow === 0 || dow === 6;
+      const marked = !!store[key];
+      const cls = ['day-cell', isWE ? 'we' : '', marked ? cellMark : ''].filter(Boolean).join(' ');
+      cells += `<div class="${cls}" onclick="${toggleFn}('${key}')">${d}<span class="dow">${DOW_LETTERS[dow]}</span></div>`;
+    });
+    return `
+      <div class="res-block">
+        <div class="res-head">
+          <span class="dot" style="background:${color};width:14px;height:14px"></span>
+          <div class="res-name">${esc(r.nombre)} <span class="badge badge-${r.anio.toLowerCase()}">${r.anio}</span></div>
+          <span class="res-count">${marcados} día${marcados!==1?'s':''}</span>
+        </div>
+        <div class="day-grid">${cells}</div>
+      </div>`;
+  }).join('');
+}
+
+function toggleSolicitudMobile(key) {
+  if (state.solicitudes[key]) delete state.solicitudes[key];
+  else state.solicitudes[key] = true;
+  save();
+  renderSolicitudes();
+}
+
+function toggleSinGuardiaMobile(key) {
+  if (state.sinGuardia[key]) delete state.sinGuardia[key];
+  else state.sinGuardia[key] = true;
+  save();
+  renderSolicitudes();
+}
+
+// =============================================
+// RESIDENTES — tarjetas (móvil)
+// =============================================
+function renderResidentesMobile() {
+  const list = document.getElementById('res-card-list');
+  if (!list) return;
+  if (state.residentes.length === 0) {
+    list.innerHTML = '<p class="text-muted" style="padding:6px 2px;text-align:center">No hay residentes. Añade el primero arriba.</p>';
+    return;
+  }
+  list.innerHTML = state.residentes.map((r, i) => {
+    const color = getColor(r.colorIdx ?? i);
+    const ausCount = state.ausencias.filter(a => a.resId === r.id).length;
+    const isRota = r.rotaInicio && r.rotaFin;
+    return `
+      <div class="res-card">
+        <div class="res-card-head">
+          <span class="swatch" style="background:${color}"></span>
+          <div class="name">${esc(r.nombre)}</div>
+          <span class="badge badge-${r.anio.toLowerCase()}">${r.anio}</span>
+        </div>
+        <div class="res-card-meta">
+          <span>${estadoHoy(r)}</span>
+          ${isRota ? `<span style="font-family:var(--mono);font-size:11px">✈ ${r.rotaInicio} → ${r.rotaFin}</span>` : ''}
+          ${ausCount > 0 ? `<span class="badge badge-otro">📚 ${ausCount} período${ausCount>1?'s':''}</span>` : ''}
+        </div>
+        <div class="res-card-actions">
+          <button class="btn btn-outline btn-sm" onclick="openModalRota('${r.id}')">Rotación</button>
+          <button class="btn btn-outline btn-sm" onclick="openModalAus('${r.id}')">Ausencias</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteResidente('${r.id}')">Eliminar</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Make sure mobile views stay in sync after every desktop render
+(function patchRenders() {
+  const origRes = window.renderResidentes;
+  if (typeof origRes === 'function') {
+    window.renderResidentes = function() { origRes(); renderResidentesMobile(); };
+  }
+  const origSol = window.renderSolicitudes;
+  if (typeof origSol === 'function') {
+    window.renderSolicitudes = function() { origSol(); renderSolicitudesMobile(); };
+  }
+})();
+
+// Initial sync
+syncBottomNav('residentes');
+renderResidentesMobile();
+
+// Close sheet when tapping the grab handle
+document.querySelectorAll('.sheet-handle').forEach(h => {
+  h.addEventListener('click', function() {
+    const overlay = this.closest('.modal-overlay');
+    if (overlay) overlay.classList.remove('open');
+  });
+});
+
+// Close any open sheet on browser back (mobile UX nicety)
+window.addEventListener('popstate', function() {
+  document.querySelectorAll('.modal-overlay.open').forEach(o => o.classList.remove('open'));
+});
+</script>
+
 </body>
 </html>
