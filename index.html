@@ -1124,6 +1124,10 @@
       <label>Residente</label>
       <select id="modal-select" style="width:100%" onchange="checkModalWarn()"></select>
     </div>
+    <div class="form-group" id="modal-acomp-group" style="display:none">
+      <label>Acompañante (opcional)</label>
+      <select id="modal-acomp-select" style="width:100%" onchange="checkModalWarn()"></select>
+    </div>
     <div id="modal-warn" style="margin-top:6px"></div>
     <div class="modal-actions">
       <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancelar</button>
@@ -1789,6 +1793,29 @@ function openModal(dateStr, tipo) {
     sel.appendChild(opt);
   });
   sel.value = state.asignaciones[dateStr + '_' + tipo] || '';
+
+  // Desplegable secundario de acompañante (solo al asignar guardia principal)
+  const acompGroup = document.getElementById('modal-acomp-group');
+  const acompSel = document.getElementById('modal-acomp-select');
+  if (tipo === 'guardia') {
+    acompSel.innerHTML = '<option value="">— Sin asignar —</option>';
+    state.residentes.forEach(r => {
+      const opt = document.createElement('option');
+      opt.value = r.id;
+      const isRota = isRotandoFuera(r, dateStr);
+      const aus = getAusencia(r.id, dateStr);
+      let sufijo = '';
+      if (aus) sufijo = ` · ${AUS_LABELS[aus.tipo]}`;
+      else if (isRota) sufijo = ' · rotando';
+      opt.textContent = `${r.nombre} (${r.anio})${sufijo}`;
+      acompSel.appendChild(opt);
+    });
+    acompSel.value = state.asignaciones[dateStr + '_guardia2'] || '';
+    acompGroup.style.display = '';
+  } else {
+    acompGroup.style.display = 'none';
+  }
+
   document.getElementById('modal-asig').classList.add('open');
   checkModalWarn();
 }
@@ -1815,10 +1842,21 @@ function checkModalWarn() {
   if (res && isRotandoFuera(res, dateStr) && !aus)
     msgs.push({ bg:'#e6f0f3', border:'#c5dde3', color:'#0a4a5b', html:`${AUS_ICON_ROTA} Está rotando fuera (viene por la tarde)` });
 
-  // Aviso R1 sin acompañante
+  // Aviso R1 sin acompañante / acompañante R1
   if (state.reglas.r1Acompanante && state.reglas.r1Acompanante.activo) {
-    if (currentModal.tipo === 'guardia' && res && res.anio === 'R1' && !state.asignaciones[dateStr + '_guardia2'])
-      msgs.push({ bg:'#f4eee0', border:'#e0d4b4', color:'#6b5328', html:'R1 sin acompañante — recuerda asignar el slot “Acomp.”' });
+    if (currentModal.tipo === 'guardia' && res && res.anio === 'R1') {
+      const acompSel = document.getElementById('modal-acomp-select');
+      const acompVal = acompSel ? acompSel.value : (state.asignaciones[dateStr + '_guardia2'] || '');
+      if (!acompVal)
+        msgs.push({ bg:'#f4eee0', border:'#e0d4b4', color:'#6b5328', html:'R1 sin acompañante — selecciona uno abajo' });
+    }
+    if (currentModal.tipo === 'guardia') {
+      const acompSel = document.getElementById('modal-acomp-select');
+      const acompVal = acompSel ? acompSel.value : '';
+      const acompRes = acompVal ? state.residentes.find(r => r.id === acompVal) : null;
+      if (acompRes && acompRes.anio === 'R1')
+        msgs.push({ bg:'#efdfdb', border:'#d8bdb6', color:'#6b332c', html:'El acompañante no puede ser R1' });
+    }
     if (currentModal.tipo === 'guardia2' && res && res.anio === 'R1')
       msgs.push({ bg:'#efdfdb', border:'#d8bdb6', color:'#6b332c', html:'El acompañante no puede ser R1' });
   }
@@ -1839,6 +1877,14 @@ function saveAsig() {
   const val = document.getElementById('modal-select').value;
   if (val) state.asignaciones[key] = val;
   else delete state.asignaciones[key];
+
+  if (currentModal.tipo === 'guardia') {
+    const acompKey = currentModal.dateStr + '_guardia2';
+    const acompVal = document.getElementById('modal-acomp-select').value;
+    if (acompVal) state.asignaciones[acompKey] = acompVal;
+    else delete state.asignaciones[acompKey];
+  }
+
   save(); closeModal();
   renderCalendario();
   renderCalendarioBusca();
@@ -2573,8 +2619,13 @@ function imprimirCuadrante({ titulo, tipos, pieLeyenda }) {
   const firstDay = new Date(y, m, 1).getDay();
   const startOffset = firstDay === 0 ? 6 : firstDay - 1;
 
+  // Paleta de azules muy claros para el PDF (un tono distinto por residente)
+  const PDF_BLUES = ['#e7f0fb','#dde9f8','#d6e4f5','#cddfee','#eaf1fa','#d8e6f4','#dbe7f6','#c6d8eb','#e3edf7','#d0dff0'];
+  const PDF_TEXT = '#1e3a5f';
+  const pdfColorFor = (r, fallbackIdx) => PDF_BLUES[((r && (r.colorIdx ?? fallbackIdx)) ?? 0) % PDF_BLUES.length];
+
   const resMap = {};
-  state.residentes.forEach((r, i) => { resMap[r.id] = { ...r, color: getColor(r.colorIdx ?? i) }; });
+  state.residentes.forEach((r, i) => { resMap[r.id] = { ...r, color: pdfColorFor(r, i) }; });
 
   const cells = [];
   for (let i = 0; i < startOffset; i++) cells.push('<td></td>');
@@ -2583,7 +2634,7 @@ function imprimirCuadrante({ titulo, tipos, pieLeyenda }) {
     const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dow = new Date(y, m, d).getDay();
     const isWE = dow === 0 || dow === 6;
-    const slot = (letra, r) => r ? `<div style="background:${r.color};color:white;border-radius:3px;padding:2px 6px;font-size:9.5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px"><span style="background:rgba(255,255,255,.22);padding:0 4px;border-radius:2px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;letter-spacing:.04em">${letra}</span><span>${r.nombre}</span></div>` : '';
+    const slot = (letra, r) => r ? `<div style="background:${r.color};color:${PDF_TEXT};border-radius:3px;padding:2px 6px;font-size:9.5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;border:1px solid rgba(30,58,95,0.10)"><span style="background:rgba(30,58,95,0.08);padding:0 4px;border-radius:2px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;letter-spacing:.04em;color:${PDF_TEXT}">${letra}</span><span>${r.nombre}</span></div>` : '';
     const slots = tipos.map(([tipo, letra]) => slot(letra, resMap[state.asignaciones[ds + '_' + tipo]])).join('');
     cells.push(`<td style="border:1px solid #e3e7ec;vertical-align:top;padding:6px 6px;background:${isWE?'#eef2f4':'white'}">
       <div style="font-size:10.5px;font-weight:600;color:${isWE?'#7a4a4a':'#5b6b80'};margin-bottom:2px;font-family:'IBM Plex Mono',monospace">${d}</div>
@@ -2597,7 +2648,7 @@ function imprimirCuadrante({ titulo, tipos, pieLeyenda }) {
 
   const legend = state.residentes.map((r,i) =>
     `<span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;border:1px solid #e3e7ec;border-radius:5px;padding:3px 8px;background:white;margin:2px">
-      <span style="width:8px;height:8px;border-radius:50%;background:${getColor(r.colorIdx??i)};flex-shrink:0"></span>${r.nombre} <span style="color:#5b6b80">(${r.anio})</span>
+      <span style="width:10px;height:10px;border-radius:3px;background:${pdfColorFor(r,i)};border:1px solid rgba(30,58,95,0.12);flex-shrink:0"></span>${r.nombre} <span style="color:#5b6b80">(${r.anio})</span>
     </span>`).join('');
 
   const popup = window.open('', '_blank', 'width=1100,height=820');
