@@ -2657,7 +2657,7 @@ function imprimirCuadrante({ titulo, tipos, pieLeyenda }) {
   <title>${titulo} ${months[m]} ${y}</title>
   <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    *{box-sizing:border-box;margin:0;padding:0}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
     body{font-family:'Public Sans',-apple-system,sans-serif;padding:18px;background:white;color:#0f1c2e}
     h1{font-size:17px;font-weight:700;letter-spacing:-0.01em}
     .sub{font-size:11px;color:#5b6b80;margin:4px 0 14px;font-family:'IBM Plex Mono',monospace}
