@@ -3,176 +3,294 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title> Sistema de Gestión de Guardias</title>
+<title>Guardias · Sistema de gestión clínica</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f0f4f8;
+    --bg: #f5f7f8;
+    --bg-soft: #eef2f4;
     --card: #ffffff;
-    --primary: #1a56db;
-    --primary-light: #e1effe;
-    --danger: #e02424;
-    --danger-light: #fde8e8;
-    --success: #057a55;
-    --success-light: #def7ec;
-    --warning: #ff5a1f;
-    --warning-light: #feecdc;
-    --border: #d1d5db;
-    --text: #111827;
-    --text-muted: #6b7280;
-    --radius: 8px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+    --primary: #0d5b6f;
+    --primary-hover: #0a4a5b;
+    --primary-light: #e6f0f3;
+    --primary-soft: #f1f6f7;
+    --accent: #c89b3c;
+    --danger: #b3261e;
+    --danger-light: #fbeae8;
+    --success: #1b6e3f;
+    --success-light: #e6f1ea;
+    --warning: #b45309;
+    --warning-light: #fdf3e7;
+    --border: #e3e7ec;
+    --border-strong: #cdd4dd;
+    --text: #0f1c2e;
+    --text-muted: #5b6b80;
+    --text-faint: #8a96a8;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow-sm: 0 1px 2px rgba(15,28,46,.04), 0 1px 1px rgba(15,28,46,.03);
+    --shadow: 0 1px 3px rgba(15,28,46,.06), 0 1px 2px rgba(15,28,46,.04);
+    --shadow-lg: 0 10px 24px -8px rgba(15,28,46,.18), 0 4px 8px -2px rgba(15,28,46,.06);
+    --mono: 'IBM Plex Mono', ui-monospace, monospace;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    font-feature-settings: 'cv02','cv03','cv04','cv11';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 
-  header { background: var(--primary); color: white; padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-size: 18px; font-weight: 700; }
-  header span { font-size: 13px; opacity: 0.8; }
+  /* HEADER */
+  header {
+    background: #ffffff;
+    color: var(--text);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-hover) 100%);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 1px 2px rgba(13,91,111,.3), inset 0 1px 0 rgba(255,255,255,.12);
+  }
+  .brand-mark svg { width: 18px; height: 18px; }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
+  .brand-text .name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+  .brand-text .tag { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.02em; text-transform: uppercase; }
+  .header-divider { width: 1px; height: 28px; background: var(--border); margin: 0 6px; }
+  .header-meta { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .header-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-radius: 7px;
+    background: white; color: var(--text); border: 1px solid var(--border);
+    font-size: 12.5px; font-weight: 500; font-family: inherit;
+    cursor: pointer; transition: all .15s; margin: 0;
+  }
+  .header-btn:hover { background: var(--bg-soft); border-color: var(--border-strong); }
+  .header-btn.danger { color: var(--danger); }
+  .header-btn.danger:hover { background: var(--danger-light); border-color: #e8c1bc; }
+  .header-btn svg { width: 14px; height: 14px; }
 
-  nav { background: white; border-bottom: 1px solid var(--border); display: flex; gap: 0; padding: 0 16px; }
-  nav button { padding: 12px 18px; border: none; background: none; cursor: pointer; font-size: 14px; color: var(--text-muted); border-bottom: 3px solid transparent; transition: all .15s; }
+  /* NAV */
+  nav {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 4px;
+    padding: 0 22px;
+    overflow-x: auto;
+  }
+  nav button {
+    padding: 14px 14px 12px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 13.5px;
+    font-weight: 500;
+    font-family: inherit;
+    color: var(--text-muted);
+    border-bottom: 2px solid transparent;
+    transition: all .15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    letter-spacing: -0.005em;
+  }
+  nav button svg { width: 15px; height: 15px; stroke-width: 1.8; }
   nav button.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
-  nav button:hover:not(.active) { color: var(--text); background: var(--bg); }
+  nav button:hover:not(.active) { color: var(--text); }
 
-  main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+  main { padding: 28px 28px 60px; max-width: 1280px; margin: 0 auto; }
   .tab-content { display: none; }
-  .tab-content.active { display: block; }
+  .tab-content.active { display: block; animation: fadeIn .25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
-  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; }
-  .card-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-  .section-title { font-size: 15px; font-weight: 700; margin: 24px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--border); display: flex; align-items: center; gap: 6px; }
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); padding: 22px 24px; margin-bottom: 18px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; color: var(--text); letter-spacing: -0.005em; }
+  .card-title .eyebrow { font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .section-title { font-size: 12px; font-weight: 700; margin: 28px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
 
-  .btn { padding: 7px 14px; border-radius: var(--radius); border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: opacity .15s; }
-  .btn:hover { opacity: .85; }
+  .btn { padding: 8px 14px; border-radius: 7px; border: 1px solid transparent; cursor: pointer; font-size: 13px; font-weight: 500; font-family: inherit; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; line-height: 1; }
   .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-hover); }
   .btn-danger { background: var(--danger); color: white; }
-  .btn-outline { background: white; color: var(--text); border: 1px solid var(--border); }
-  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-danger:hover { filter: brightness(.92); }
+  .btn-outline { background: white; color: var(--text); border-color: var(--border); }
+  .btn-outline:hover { background: var(--bg-soft); border-color: var(--border-strong); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
   .btn-success { background: var(--success); color: white; }
-  .btn-purple { background: #7c3aed; color: white; }
+  .btn-success:hover { filter: brightness(.95); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border-color: transparent; padding: 4px 8px; }
+  .btn-ghost:hover { color: var(--text); background: var(--bg-soft); }
 
-  .form-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
-  .form-group { display: flex; flex-direction: column; gap: 4px; }
-  .form-group label { font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-  input, select, textarea { padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; background: white; color: var(--text); }
+  .form-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  input, select, textarea { padding: 8px 11px; border: 1px solid var(--border); border-radius: 7px; font-size: 13.5px; font-family: inherit; background: white; color: var(--text); transition: border-color .12s, box-shadow .12s; }
+  input:hover, select:hover { border-color: var(--border-strong); }
   input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
 
   table { width: 100%; border-collapse: collapse; }
-  th { background: var(--bg); padding: 8px 12px; text-align: left; font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid var(--border); }
-  td { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+  th { background: transparent; padding: 10px 14px; text-align: left; font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; border-bottom: 1px solid var(--border); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 13.5px; }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #f9fafb; }
+  tr:hover td { background: var(--primary-soft); }
 
-  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
-  .badge-r1 { background: #fde68a; color: #92400e; }
-  .badge-r2 { background: #bfdbfe; color: #1e40af; }
-  .badge-r3 { background: #bbf7d0; color: #065f46; }
-  .badge-r4 { background: #fecaca; color: #991b1b; }
-  .badge-r5 { background: #e9d5ff; color: #6b21a8; }
-  .badge-rotando { background: #fed7aa; color: #9a3412; }
-  .badge-master { background: #ede9fe; color: #5b21b6; }
-  .badge-curso { background: #d1fae5; color: #065f46; }
-  .badge-congreso { background: #dbeafe; color: #1e40af; }
-  .badge-otro { background: #f3f4f6; color: #374151; }
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.01em; line-height: 1.5; border: 1px solid transparent; }
+  .badge-r1 { background: #fef3e2; color: #92590c; border-color: #f3dfb8; }
+  .badge-r2 { background: #e6f0f3; color: #0a4a5b; border-color: #c5dde3; }
+  .badge-r3 { background: #e6f1ea; color: #0f5c30; border-color: #c2dccd; }
+  .badge-r4 { background: #fbeae8; color: #931e17; border-color: #ecc8c4; }
+  .badge-r5 { background: #efeaf5; color: #4d2d8a; border-color: #d6cae6; }
+  .badge-rotando { background: #fdf3e7; color: #8a3d09; border-color: #efd4b2; }
+  .badge-master { background: #efeaf5; color: #4d2d8a; border-color: #d6cae6; }
+  .badge-curso { background: #e6f1ea; color: #0f5c30; border-color: #c2dccd; }
+  .badge-congreso { background: #e6f0f3; color: #0a4a5b; border-color: #c5dde3; }
+  .badge-otro { background: var(--bg-soft); color: var(--text-muted); border-color: var(--border); }
 
-  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(15,28,46,.08); }
 
   /* CALENDARIO */
-  .cal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-  .cal-header h2 { font-size: 18px; font-weight: 700; min-width: 200px; text-align: center; }
-  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-  .cal-dow { text-align: center; font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 4px; text-transform: uppercase; }
-  .cal-day { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; min-height: 90px; position: relative; transition: box-shadow .15s; }
-  .cal-day:hover { box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+  .cal-header { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+  .cal-header h2 { font-size: 18px; font-weight: 700; min-width: 200px; text-align: center; letter-spacing: -0.01em; color: var(--text); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .cal-dow { text-align: center; font-size: 10.5px; font-weight: 600; color: var(--text-muted); padding: 6px 4px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .cal-day { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 8px 7px; min-height: 102px; position: relative; transition: all .15s; }
+  .cal-day:hover { box-shadow: var(--shadow); border-color: var(--border-strong); }
   .cal-day.empty { background: transparent; border: none; }
-  .cal-day.today { border-color: var(--primary); border-width: 2px; }
-  .cal-day.weekend { background: #f9fafb; }
-  .cal-day .day-num { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 4px; }
-  .cal-day.today .day-num { color: var(--primary); }
-  .cal-slot { display: flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 4px; font-size: 11px; cursor: pointer; margin-bottom: 3px; min-height: 22px; border: 1px solid transparent; transition: filter .15s; }
-  .cal-slot:hover { filter: brightness(.92); }
-  .cal-slot .slot-label { font-size: 9px; font-weight: 700; color: white; opacity: .85; flex-shrink: 0; }
-  .cal-slot .slot-name { font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; }
-  .cal-slot.empty-slot { background: #f3f4f6; border: 1px dashed var(--border); }
-  .cal-slot.empty-slot .slot-name { color: var(--text-muted); font-weight: 400; }
-  .slot-icon { font-size: 9px; }
-  .conflict-dot { position: absolute; top: 4px; right: 4px; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); }
+  .cal-day.today { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary), 0 1px 3px rgba(13,91,111,.15); }
+  .cal-day.weekend { background: var(--bg-soft); }
+  .cal-day .day-num { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; font-family: var(--mono); }
+  .cal-day.today .day-num { color: var(--primary); font-weight: 700; }
+  .cal-slot { display: flex; align-items: center; gap: 5px; padding: 4px 7px; border-radius: 5px; font-size: 11px; cursor: pointer; margin-bottom: 4px; min-height: 24px; border: 1px solid transparent; transition: all .12s; }
+  .cal-slot:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(15,28,46,.12); }
+  .cal-slot .slot-label {
+    font-family: var(--mono); font-size: 9.5px; font-weight: 600; color: white;
+    background: rgba(255,255,255,.18); padding: 1px 4px; border-radius: 3px;
+    flex-shrink: 0; letter-spacing: 0.04em; line-height: 1.3;
+  }
+  .cal-slot .slot-name { font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; letter-spacing: 0.005em; }
+  .cal-slot.empty-slot { background: transparent; border: 1px dashed var(--border-strong); }
+  .cal-slot.empty-slot:hover { background: var(--primary-soft); border-color: var(--primary); }
+  .cal-slot.empty-slot .slot-label { color: var(--text-faint); background: var(--bg-soft); }
+  .cal-slot.empty-slot .slot-name { color: var(--text-muted); font-weight: 500; }
+  .slot-icon { margin-left: auto; opacity: .85; display: inline-flex; align-items: center; color: white; }
+  .slot-icon svg { width: 10px; height: 10px; }
+  .badge svg { width: 10px; height: 10px; margin-right: 4px; }
+  .legend-item svg { width: 12px; height: 12px; stroke-width: 1.8; color: var(--text-muted); }
+  .conflict-dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 2px white; }
 
   /* MODAL */
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,28,46,.45); backdrop-filter: blur(2px); z-index: 1000; align-items: center; justify-content: center; animation: overlayFade .15s ease; }
+  @keyframes overlayFade { from { opacity: 0; } to { opacity: 1; } }
   .modal-overlay.open { display: flex; }
-  .modal { background: white; border-radius: var(--radius); padding: 24px; width: 420px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,.2); max-height: 90vh; overflow-y: auto; }
-  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-  .modal .form-group { margin-bottom: 12px; }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-  .modal-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .modal { background: white; border-radius: 12px; padding: 24px 26px; width: 440px; max-width: 95vw; box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; border: 1px solid var(--border); }
+  .modal h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.005em; }
+  .modal .form-group { margin-bottom: 14px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .modal-subtitle { font-size: 12.5px; color: var(--text-muted); margin-bottom: 18px; }
 
   /* SOLICITUDES */
-  .sol-grid { overflow-x: auto; }
-  .sol-table { border-collapse: collapse; min-width: 700px; }
-  .sol-table th, .sol-table td { border: 1px solid var(--border); padding: 4px 6px; text-align: center; font-size: 12px; min-width: 28px; }
-  .sol-table th.name-col { min-width: 130px; text-align: left; padding-left: 10px; }
-  .sol-table .dow-header { font-size: 10px; color: var(--text-muted); }
-  .sol-table .weekend-col { background: #f9fafb; }
-  .sol-cell { width: 26px; height: 26px; border-radius: 4px; cursor: pointer; transition: background .1s; }
-  .sol-cell.libre { background: var(--danger); color: white; font-weight: 700; font-size: 11px; }
-  .sol-cell:hover:not(.libre) { background: #fee2e2; }
-  .sol-cell.libre:hover { background: #b91c1c; }
-  .conflict-header { background: var(--danger-light) !important; color: var(--danger) !important; font-weight: 700; }
-  .conflict-header-sg { background: #fff7ed !important; color: #9a3412 !important; font-weight: 700; }
-  .sol-cell.sin-guardia { background: #f97316; color: white; font-weight: 700; font-size: 11px; }
-  .sol-cell:hover:not(.libre):not(.sin-guardia) { background: #fee2e2; }
-  .sol-cell.sin-guardia:hover { background: #ea580c; }
+  .sol-grid { overflow-x: auto; border-radius: 8px; }
+  .sol-table { border-collapse: separate; border-spacing: 0; min-width: 700px; }
+  .sol-table th, .sol-table td { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 5px 6px; text-align: center; font-size: 12px; min-width: 28px; }
+  .sol-table th { background: var(--bg-soft); font-weight: 600; color: var(--text-muted); padding: 6px 4px; }
+  .sol-table tr:first-child th:first-child { border-top-left-radius: 6px; }
+  .sol-table tr:first-child th:last-child { border-top-right-radius: 6px; }
+  .sol-table th.name-col { min-width: 180px; text-align: left; padding: 8px 12px; }
+  .sol-table .dow-header { font-size: 10px; color: var(--text-faint); font-family: var(--mono); }
+  .sol-table .weekend-col { background: var(--bg-soft); }
+  .sol-table td.name-col { text-align: left; padding: 6px 12px; font-weight: 500; background: white; }
+  .sol-cell { width: 24px; height: 24px; border-radius: 4px; cursor: pointer; transition: all .1s; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+  .sol-cell:hover:not(.libre):not(.sin-guardia) { background: var(--primary-soft); box-shadow: inset 0 0 0 1px var(--primary); }
+  .sol-cell.libre { background: #e8d8d4; color: #6b332c; font-weight: 700; font-size: 11px; box-shadow: inset 0 0 0 1px #d8bdb6; }
+  .sol-cell.libre:hover { background: #dac4be; }
+  .conflict-header { background: #efdfdb !important; color: #6b332c !important; font-weight: 700; }
+  .conflict-header-sg { background: #ece3d2 !important; color: #6b5328 !important; font-weight: 700; }
+  .sol-cell.sin-guardia { background: #ece3d2; color: #6b5328; font-weight: 700; font-size: 11px; box-shadow: inset 0 0 0 1px #d6c8a8; }
+  .sol-cell.sin-guardia:hover { background: #ddd0b6; }
 
   /* ESTADÍSTICAS */
-  .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .stat-card { background: white; border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); text-align: center; }
-  .stat-card .stat-num { font-size: 28px; font-weight: 800; color: var(--primary); }
-  .stat-card .stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-  .progress-bar { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; margin-top: 4px; }
-  .progress-fill { height: 100%; border-radius: 4px; transition: width .3s; }
-  .stats-tabla-wrapper { overflow-x: auto; }
-  .anio-row td { background: #f8faff !important; font-weight: 600; }
+  .stats-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 22px; }
+  .stat-card { background: white; border-radius: 10px; padding: 16px 18px; border: 1px solid var(--border); text-align: left; min-width: 0; }
+  .stat-card .stat-num { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; line-height: 1.1; font-feature-settings: 'tnum'; }
+  .stat-card .stat-label { font-size: 10.5px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  .progress-bar { height: 6px; background: var(--bg-soft); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+  .stats-tabla-wrapper { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .stats-tabla-wrapper table { font-size: 13px; }
+  .anio-row td { background: var(--primary-soft) !important; font-weight: 600; }
 
   /* AUSENCIAS LISTA */
-  .aus-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 6px; background: #fafafa; }
+  .aus-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 8px; background: white; transition: border-color .15s; }
+  .aus-item:hover { border-color: var(--border-strong); }
   .aus-item .aus-info { flex: 1; font-size: 13px; }
-  .aus-item .aus-dates { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
-  .aus-add-form { border: 1px dashed var(--border); border-radius: var(--radius); padding: 12px; margin-top: 10px; background: #fafafa; }
+  .aus-item .aus-dates { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; font-family: var(--mono); }
+  .aus-add-form { border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-top: 12px; background: var(--bg-soft); }
   .aus-add-form .form-row { margin-bottom: 0; }
 
   /* LEYENDA */
-  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 18px; padding: 10px 14px; background: var(--bg-soft); border-radius: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); }
 
-  .text-muted { color: var(--text-muted); font-size: 12px; }
-  .alert { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 12px; }
-  .alert-info { background: var(--primary-light); color: var(--primary); border: 1px solid #93c5fd; }
-  .mes-selector { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .text-muted { color: var(--text-muted); font-size: 12.5px; }
+  .alert { padding: 11px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 14px; border: 1px solid transparent; line-height: 1.45; }
+  .alert-info { background: var(--primary-soft); color: var(--primary); border-color: #c5dde3; }
+  .mes-selector { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
 
   /* TOGGLE SWITCH */
-  .toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
+  .toggle { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
   .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
-  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #cbd5e1; border-radius: 24px; transition: background .2s; }
-  .toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #c8cfd8; border-radius: 24px; transition: background .2s; }
+  .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 2px rgba(15,28,46,.25); }
   .toggle input:checked + .toggle-slider { background: var(--primary); }
-  .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+  .toggle input:checked + .toggle-slider:before { transform: translateX(18px); }
 
   /* REGLAS */
-  .rule-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; }
-  .rule-row { display: flex; align-items: center; gap: 12px; }
+  .rule-card { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin-bottom: 10px; transition: border-color .15s; }
+  .rule-card:hover { border-color: var(--border-strong); }
+  .rule-row { display: flex; align-items: center; gap: 14px; }
   .rule-info { flex: 1; }
-  .rule-title { font-weight: 600; font-size: 14px; }
-  .rule-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
-  .rule-sub { margin-top: 12px; padding: 10px 14px; background: var(--bg); border-radius: 6px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-  .rule-sub label:not(.toggle) { font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .rule-title { font-weight: 600; font-size: 13.5px; color: var(--text); letter-spacing: -0.005em; }
+  .rule-desc { font-size: 12px; color: var(--text-muted); margin-top: 3px; line-height: 1.45; }
+  .rule-sub { margin-top: 12px; padding: 12px 14px; background: var(--bg-soft); border-radius: 7px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .rule-sub label:not(.toggle) { font-size: 13px; display: flex; align-items: center; gap: 6px; color: var(--text); }
   .rule-sub select { font-size: 13px; }
   .rule-sub input[type=number] { width: 68px; padding: 5px 8px; font-size: 13px; }
-  .rule-disabled { opacity: 0.45; pointer-events: none; }
+  .rule-disabled { opacity: 0.4; pointer-events: none; }
 
   /* GRÁFICAS */
-  .chart-section { display: flex; flex-wrap: wrap; gap: 36px; padding: 8px 0; overflow-x: auto; }
-  .chart-box { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+  .chart-section { display: flex; flex-wrap: wrap; gap: 20px; padding: 8px 0; overflow-x: auto; }
+  .chart-box { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; }
+
+  /* HEADER STRIP */
+  .toolbar-strip {
+    background: white;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 16px;
+  }
+
+  /* SCROLLBARS */
+  ::-webkit-scrollbar { height: 8px; width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 
   /* PRINT */
   @media print {
@@ -189,26 +307,59 @@
 <body>
 
 <header>
-  <div>
-    <h1> Sistema de gestión de guardias</h1>
-    <span></span>
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z" fill="white"></path>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <span class="name">Guardias</span>
+      <span class="tag">Sistema de planificación clínica</span>
+    </div>
   </div>
-  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-    <button class="btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);font-size:12px" onclick="exportarDatos()">⬇ Exportar</button>
-    <label class="btn" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);font-size:12px;cursor:pointer;margin:0">
-      ⬆ Importar
+  <div class="header-actions">
+    <button class="header-btn" onclick="exportarDatos()" title="Exportar datos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      Exportar
+    </button>
+    <label class="header-btn" style="cursor:pointer" title="Importar datos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+      Importar
       <input type="file" accept=".json" style="display:none" onchange="importarDatos(event)">
     </label>
-    <button class="btn" style="background:rgba(220,38,38,0.35);color:white;border:1px solid rgba(255,255,255,0.3);font-size:12px" onclick="borrarTodo()">🗑 Borrar todo</button>
+    <button class="header-btn danger" onclick="borrarTodo()" title="Borrar todos los datos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>
+      Borrar todo
+    </button>
   </div>
 </header>
 
 <nav>
-  <button class="active" onclick="showTab('residentes', this)">👤 Residentes</button>
-  <button onclick="showTab('solicitudes', this)">📋 Solicitudes</button>
-  <button onclick="showTab('calendario', this)">📅 Calendario</button>
-  <button onclick="showTab('estadisticas', this)">📊 Estadísticas</button>
-  <button onclick="showTab('reglas', this)">⚙️ Reglas</button>
+  <button class="active" onclick="showTab('residentes', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+    Residentes
+  </button>
+  <button onclick="showTab('solicitudes', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+    Solicitudes
+  </button>
+  <button onclick="showTab('calendario', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+    Calendario
+  </button>
+  <button onclick="showTab('busca', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9h8M8 13h5"/><circle cx="17" cy="13" r="1" fill="currentColor"/><path d="M9 2v3M15 2v3"/></svg>
+    Busca
+  </button>
+  <button onclick="showTab('estadisticas', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+    Estadísticas
+  </button>
+  <button onclick="showTab('reglas', this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    Reglas
+  </button>
 </nav>
 
 <main>
@@ -216,7 +367,7 @@
 <!-- TAB RESIDENTES -->
 <div id="tab-residentes" class="tab-content active">
   <div class="card">
-    <div class="card-title">➕ Añadir residente</div>
+    <div class="card-title">Añadir residente</div>
     <div class="form-row">
       <div class="form-group">
         <label>Nombre</label>
@@ -236,7 +387,7 @@
     </div>
   </div>
   <div class="card">
-    <div class="card-title">👥 Lista de residentes</div>
+    <div class="card-title">Lista de residentes</div>
     <div style="overflow-x:auto">
       <table>
         <thead>
@@ -258,22 +409,22 @@
 
 <!-- TAB SOLICITUDES -->
 <div id="tab-solicitudes" class="tab-content">
-  <div class="mes-selector" style="background:white;padding:12px 16px;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px">
-    <label style="font-weight:700">Mes de planificación:</label>
+  <div class="toolbar-strip mes-selector">
+    <label style="font-weight:600;font-size:12px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em">Mes de planificación</label>
     <select id="sol-mes-sel" onchange="renderSolicitudes()"></select>
-    <span style="font-size:12px;color:var(--text-muted);margin-left:4px">(solicitudes para el mes siguiente)</span>
+    <span style="font-size:12px;color:var(--text-muted);margin-left:4px">Solicitudes para el mes siguiente</span>
   </div>
 
   <div class="card">
-    <div class="card-title">Vacaciones / días de asuntos propios</div>
+    <div class="card-title"><span class="eyebrow">01</span> Vacaciones / días de asuntos propios</div>
     <div class="alert alert-info" style="margin-bottom:12px">El residente no estará en el hospital esos días.</div>
     <span id="sol-conflictos-badge" class="badge" style="background:var(--danger-light);color:var(--danger);margin-bottom:10px;display:inline-block"></span>
     <div class="sol-grid" id="sol-grid"></div>
   </div>
 
   <div class="card" style="margin-top:0">
-    <div class="card-title">Bloqueos</div>
-    <div class="alert" style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;margin-bottom:12px">El residente solicita no tener guardia esos días.</div>
+    <div class="card-title"><span class="eyebrow">02</span> Bloqueos</div>
+    <div class="alert" style="background:#f4eee0;border:1px solid #e0d4b4;color:#6b5328;margin-bottom:12px">El residente solicita no tener guardia esos días.</div>
     <span id="sg-conflictos-badge" class="badge" style="background:#fff7ed;color:#9a3412;margin-bottom:10px;display:inline-block"></span>
     <div class="sol-grid" id="sg-grid"></div>
   </div>
@@ -288,10 +439,16 @@
       <button class="btn btn-outline" onclick="cambiarMes(1)">▶</button>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <select id="cal-mes-jump" onchange="jumpToMes(this.value)" class="no-print"></select>
-        <button class="btn btn-primary btn-sm no-print" onclick="autoAsignar()"> Auto-asignar</button>
-        <button class="btn btn-outline btn-sm no-print" onclick="imprimirCalendario()">🖨️ PDF cuadrante</button>
-        <button class="btn btn-outline no-print" style="font-size:12px;color:var(--danger);border-color:var(--danger)" onclick="borrarMes()"> Borrar guardias</button>
-        <button class="btn btn-outline no-print" style="font-size:12px;color:#9a3412;border-color:#fed7aa" onclick="borrarSolicitudesMes()"> Borrar solicitudes</button>
+        <button class="btn btn-primary btn-sm no-print" onclick="autoAsignar()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          Auto-asignar
+        </button>
+        <button class="btn btn-outline btn-sm no-print" onclick="imprimirCalendario()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Imprimir cuadrante
+        </button>
+        <button class="btn btn-outline btn-sm no-print" style="color:var(--danger);border-color:#e8c1bc" onclick="borrarMes()">Borrar guardias</button>
+        <button class="btn btn-outline btn-sm no-print" style="color:var(--warning);border-color:#f0d4ab" onclick="borrarSolicitudesMes()">Borrar solicitudes</button>
       </div>
     </div>
     <div id="cal-legend" class="legend"></div>
@@ -301,15 +458,49 @@
       <div class="cal-dow">Mié</div>
       <div class="cal-dow">Jue</div>
       <div class="cal-dow">Vie</div>
-      <div class="cal-dow" style="color:#e02424">Sáb</div>
-      <div class="cal-dow" style="color:#e02424">Dom</div>
+      <div class="cal-dow" style="color:#7a4a4a">Sáb</div>
+      <div class="cal-dow" style="color:#7a4a4a">Dom</div>
     </div>
-    <div style="margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-muted)">
-      <span>✈ Rotación externa</span>
-      <span>🎓 Máster</span>
-      <span>📚 Curso</span>
-      <span>🏛 Congreso</span>
-      <span>📋 Otra ausencia</span>
+    <div style="margin-top:14px;display:flex;gap:8px 18px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);align-items:center">
+      <span class="legend-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2Z"/></svg> Rotación externa</span>
+      <span class="legend-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg> Máster</span>
+      <span class="legend-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5Z"/><path d="M4 19.5V22h16"/></svg> Curso</span>
+      <span class="legend-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 10h18"/><path d="m12 3 9 7H3z"/><path d="M5 10v11M19 10v11M9 14v4M15 14v4"/></svg> Congreso</span>
+      <span class="legend-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V2h6v2"/><path d="M9 12h6M9 16h4"/></svg> Otra ausencia</span>
+    </div>
+  </div>
+</div>
+
+<!-- TAB BUSCA -->
+<div id="tab-busca" class="tab-content">
+  <div class="card">
+    <div class="cal-header">
+      <button class="btn btn-outline" onclick="cambiarMes(-1)">◀</button>
+      <h2 id="busca-cal-titulo"></h2>
+      <button class="btn btn-outline" onclick="cambiarMes(1)">▶</button>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="busca-cal-mes-jump" onchange="jumpToMes(this.value)" class="no-print"></select>
+        <button class="btn btn-primary btn-sm no-print" onclick="asignarBuscaAGuardia()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          Asignar = guardia
+        </button>
+        <button class="btn btn-outline btn-sm no-print" onclick="imprimirBusca()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+          Imprimir busca
+        </button>
+        <button class="btn btn-outline btn-sm no-print" style="color:var(--danger);border-color:#e8c1bc" onclick="borrarBuscaMes()">Borrar busca</button>
+      </div>
+    </div>
+    <div class="alert alert-info" style="margin-bottom:14px">Calendario independiente del busca (localizador). Asignaciones separadas de las guardias presenciales.</div>
+    <div id="busca-cal-legend" class="legend"></div>
+    <div id="busca-cal-grid" class="cal-grid">
+      <div class="cal-dow">Lun</div>
+      <div class="cal-dow">Mar</div>
+      <div class="cal-dow">Mié</div>
+      <div class="cal-dow">Jue</div>
+      <div class="cal-dow">Vie</div>
+      <div class="cal-dow" style="color:#7a4a4a">Sáb</div>
+      <div class="cal-dow" style="color:#7a4a4a">Dom</div>
     </div>
   </div>
 </div>
@@ -317,7 +508,10 @@
 <!-- TAB ESTADÍSTICAS -->
 <div id="tab-estadisticas" class="tab-content">
   <div class="card">
-    <div class="card-title">📊 Estadísticas <button class="btn btn-outline btn-sm no-print" style="margin-left:auto" onclick="imprimirEstadisticas()">🖨️ Exportar informe PDF</button></div>
+    <div class="card-title">Resumen de actividad <button class="btn btn-outline btn-sm no-print" style="margin-left:auto" onclick="imprimirEstadisticas()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+      Exportar PDF
+    </button></div>
     <div class="mes-selector no-print">
       <label style="font-weight:600">Período:</label>
       <select id="stats-periodo" onchange="renderStats()">
@@ -333,9 +527,9 @@
 <!-- TAB REGLAS -->
 <div id="tab-reglas" class="tab-content">
   <div class="card">
-    <div class="card-title">⚙️ Reglas de auto-asignación</div>
+    <div class="card-title">Reglas de auto-asignación</div>
     <div class="alert alert-info" style="margin-bottom:16px">
-      Estas reglas se aplican al pulsar <strong> Auto-asignar</strong> en el calendario. Las reglas desactivadas no se tienen en cuenta. La regla de no guardias consecutivas siempre está activa.
+      Estas reglas se aplican al pulsar <strong>Auto-asignar</strong> en el calendario. Las reglas desactivadas no se tienen en cuenta. La regla de no guardias consecutivas siempre está activa.
     </div>
 
     <!-- Regla: Incluir rotando -->
@@ -534,7 +728,7 @@
 <!-- MODAL ROTACIÓN -->
 <div class="modal-overlay" id="modal-rota">
   <div class="modal">
-    <h3>✈ Rotación externa</h3>
+    <h3>Rotación externa</h3>
     <p class="modal-subtitle" id="modal-rota-nombre"></p>
     <div class="form-group">
       <label>Fecha inicio</label>
@@ -555,7 +749,7 @@
 <!-- MODAL AUSENCIAS -->
 <div class="modal-overlay" id="modal-aus">
   <div class="modal" style="width:500px">
-    <h3>📚 Ausencias</h3>
+    <h3>Ausencias programadas</h3>
     <p class="modal-subtitle" id="modal-aus-nombre"></p>
     <div id="modal-aus-lista"></div>
     <div class="aus-add-form" id="aus-add-form">
@@ -605,7 +799,13 @@ const COLORS = [
   '#0891b2','#be185d','#15803d','#b45309','#4338ca',
   '#0f766e','#b91c1c','#7c3aed','#1d4ed8','#065f46'
 ];
-const AUS_ICONS = { master:'🎓', curso:'📚', congreso:'🏛', otro:'📋' };
+const AUS_ICONS = {
+  master:   '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;display:inline-block"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>',
+  curso:    '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;display:inline-block"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5Z"/><path d="M4 19.5V22h16"/></svg>',
+  congreso: '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;display:inline-block"><path d="M3 21h18"/><path d="M3 10h18"/><path d="m12 3 9 7H3z"/><path d="M5 10v11M19 10v11M9 14v4M15 14v4"/></svg>',
+  otro:     '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;display:inline-block"><rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V2h6v2"/><path d="M9 12h6M9 16h4"/></svg>'
+};
+const AUS_ICON_ROTA = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;display:inline-block"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2Z"/></svg>';
 const AUS_LABELS = { master:'Máster', curso:'Curso', congreso:'Congreso', otro:'Otro' };
 
 function defaultReglas() {
@@ -706,6 +906,7 @@ function showTab(name, btn) {
   document.getElementById('tab-' + name).classList.add('active');
   if (btn) btn.classList.add('active');
   if (name === 'calendario') renderCalendario();
+  if (name === 'busca') renderCalendarioBusca();
   if (name === 'solicitudes') renderSolicitudes();
   if (name === 'estadisticas') renderStats();
   if (name === 'residentes') renderResidentes();
@@ -742,7 +943,7 @@ function estadoHoy(r) {
   const today = todayStr();
   const aus = getAusencia(r.id, today);
   if (aus) return `<span class="badge badge-${aus.tipo}">${AUS_ICONS[aus.tipo]} ${AUS_LABELS[aus.tipo]}</span>`;
-  if (isRotandoFuera(r, today)) return `<span class="badge badge-rotando">✈ Rotando fuera</span>`;
+  if (isRotandoFuera(r, today)) return `<span class="badge badge-rotando">${AUS_ICON_ROTA} Rotando fuera</span>`;
   return `<span style="color:var(--text-muted)">—</span>`;
 }
 
@@ -965,14 +1166,18 @@ function buildCalMesOptions() {
 function jumpToMes(val) {
   const [y, m] = val.split('-').map(Number);
   state.calAnio = y; state.calMes = m;
-  save(); renderCalendario();
+  save();
+  if (document.getElementById('tab-busca') && document.getElementById('tab-busca').classList.contains('active')) renderCalendarioBusca();
+  else renderCalendario();
 }
 
 function cambiarMes(delta) {
   state.calMes += delta;
   if (state.calMes > 11) { state.calMes = 0; state.calAnio++; }
   if (state.calMes < 0) { state.calMes = 11; state.calAnio--; }
-  save(); renderCalendario();
+  save();
+  if (document.getElementById('tab-busca') && document.getElementById('tab-busca').classList.contains('active')) renderCalendarioBusca();
+  else renderCalendario();
 }
 
 function renderCalendario() {
@@ -1024,18 +1229,84 @@ function renderCalendario() {
     }
 
     cell.innerHTML += `<div class="day-num">${d}</div>`;
-    cell.appendChild(buildSlot(ds, 'guardia', '🏥'));
+    cell.appendChild(buildSlot(ds, 'guardia', 'G'));
 
     // Slot acompañante: mostrar si hay R1 en guardia (con regla activa) o si ya hay alguien asignado
     const guardiaResId = state.asignaciones[ds + '_guardia'];
     const guardiaRes = guardiaResId ? state.residentes.find(r => r.id === guardiaResId) : null;
     const r1EnGuardia = state.reglas.r1Acompanante && state.reglas.r1Acompanante.activo && guardiaRes && guardiaRes.anio === 'R1';
     if (r1EnGuardia || !!state.asignaciones[ds + '_guardia2']) {
-      cell.appendChild(buildSlot(ds, 'guardia2', '👥'));
+      cell.appendChild(buildSlot(ds, 'guardia2', 'A'));
     }
 
-    cell.appendChild(buildSlot(ds, 'busca', '📟'));
     grid.appendChild(cell);
+  }
+}
+
+// =============================================
+// CALENDARIO DE BUSCA (separado)
+// =============================================
+function renderCalendarioBusca() {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const titulo = document.getElementById('busca-cal-titulo');
+  if (!titulo) return;
+  titulo.textContent = `${months[state.calMes]} ${state.calAnio}`;
+  buildBuscaCalMesOptions();
+
+  const y = state.calAnio, m = state.calMes;
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+
+  const grid = document.getElementById('busca-cal-grid');
+  while (grid.children.length > 7) grid.removeChild(grid.lastChild);
+
+  const legend = document.getElementById('busca-cal-legend');
+  if (legend) {
+    legend.innerHTML = '';
+    state.residentes.forEach((r, i) => {
+      const color = getColor(r.colorIdx ?? i);
+      const li = document.createElement('div');
+      li.className = 'legend-item';
+      li.innerHTML = `<span class="dot" style="background:${color}"></span><span>${esc(r.nombre)}</span><span class="badge badge-${r.anio.toLowerCase()}" style="margin-left:2px">${r.anio}</span>`;
+      legend.appendChild(li);
+    });
+  }
+
+  for (let i = 0; i < startOffset; i++) {
+    const div = document.createElement('div');
+    div.className = 'cal-day empty';
+    grid.appendChild(div);
+  }
+
+  const today = todayStr();
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow = new Date(y, m, d).getDay();
+    const isWE = dow === 0 || dow === 6;
+    const isToday = ds === today;
+    const cell = document.createElement('div');
+    cell.className = `cal-day${isWE ? ' weekend' : ''}${isToday ? ' today' : ''}`;
+    cell.innerHTML = `<div class="day-num">${d}</div>`;
+    cell.appendChild(buildSlot(ds, 'busca', 'B'));
+    grid.appendChild(cell);
+  }
+}
+
+function buildBuscaCalMesOptions() {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const sel = document.getElementById('busca-cal-mes-jump');
+  if (!sel) return;
+  const now = new Date();
+  sel.innerHTML = '';
+  for (let y = now.getFullYear() - 1; y <= now.getFullYear() + 2; y++) {
+    for (let m = 0; m < 12; m++) {
+      const opt = document.createElement('option');
+      opt.value = `${y}-${m}`;
+      opt.textContent = `${months[m]} ${y}`;
+      if (y === state.calAnio && m === state.calMes) opt.selected = true;
+      sel.appendChild(opt);
+    }
   }
 }
 
@@ -1068,13 +1339,13 @@ function buildSlot(ds, tipo, icon) {
     if (ausencia) {
       const sp = document.createElement('span');
       sp.className = 'slot-icon';
-      sp.textContent = AUS_ICONS[ausencia.tipo];
+      sp.innerHTML = AUS_ICONS[ausencia.tipo];
       sp.title = `${AUS_LABELS[ausencia.tipo]}${ausencia.motivo ? ': ' + ausencia.motivo : ''}`;
       div.appendChild(sp);
     } else if (isRota) {
       const sp = document.createElement('span');
       sp.className = 'slot-icon';
-      sp.textContent = '✈';
+      sp.innerHTML = AUS_ICON_ROTA;
       sp.title = 'Rotando fuera';
       div.appendChild(sp);
     }
@@ -1091,7 +1362,7 @@ function openModal(dateStr, tipo) {
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const [yy, mm, dd] = dateStr.split('-').map(Number);
   document.getElementById('modal-titulo').textContent =
-    tipo === 'guardia' ? '🏥 Guardia' : tipo === 'guardia2' ? '👥 Guardia (acompañante R1)' : '📟 Busca';
+    tipo === 'guardia' ? 'Asignar guardia' : tipo === 'guardia2' ? 'Asignar acompañante (R1)' : 'Asignar busca';
   document.getElementById('modal-subtitle').textContent = `${dd} de ${months[mm-1]} de ${yy}`;
 
   const sel = document.getElementById('modal-select');
@@ -1102,8 +1373,8 @@ function openModal(dateStr, tipo) {
     const isRota = isRotandoFuera(r, dateStr);
     const aus = getAusencia(r.id, dateStr);
     let sufijo = '';
-    if (aus) sufijo = ` ${AUS_ICONS[aus.tipo]}`;
-    else if (isRota) sufijo = ' ✈';
+    if (aus) sufijo = ` · ${AUS_LABELS[aus.tipo]}`;
+    else if (isRota) sufijo = ' · rotando';
     opt.textContent = `${r.nombre} (${r.anio})${sufijo}`;
     sel.appendChild(opt);
   });
@@ -1123,29 +1394,29 @@ function checkModalWarn() {
   const msgs = [];
 
   const aus = getAusencia(resId, dateStr);
-  if (aus) msgs.push({ bg:'#fef9c3', border:'#fde047', color:'#854d0e', text:`📚 Tiene ausencia registrada: ${AUS_ICONS[aus.tipo]} ${AUS_LABELS[aus.tipo]}${aus.motivo ? ' — ' + aus.motivo : ''}` });
+  if (aus) msgs.push({ bg:'#f4eee0', border:'#e0d4b4', color:'#6b5328', html:`${AUS_ICONS[aus.tipo]} Tiene ausencia registrada: ${AUS_LABELS[aus.tipo]}${aus.motivo ? ' — ' + aus.motivo : ''}` });
 
   if (state.solicitudes[dateStr + '_' + resId])
-    msgs.push({ bg:'#fef9c3', border:'#fde047', color:'#854d0e', text:'🏖 Ha solicitado este día de vacaciones' });
+    msgs.push({ bg:'#f4eee0', border:'#e0d4b4', color:'#6b5328', html:'Ha solicitado este día de vacaciones' });
 
   if (state.sinGuardia[dateStr + '_' + resId])
-    msgs.push({ bg:'#fff7ed', border:'#fed7aa', color:'#9a3412', text:'🙋 Ha pedido no tener guardia este día' });
+    msgs.push({ bg:'#f4eee0', border:'#e0d4b4', color:'#6b5328', html:'Ha pedido no tener guardia este día' });
 
   if (res && isRotandoFuera(res, dateStr) && !aus)
-    msgs.push({ bg:'#f0f9ff', border:'#bae6fd', color:'#0369a1', text:'✈ Está rotando fuera (viene por la tarde)' });
+    msgs.push({ bg:'#e6f0f3', border:'#c5dde3', color:'#0a4a5b', html:`${AUS_ICON_ROTA} Está rotando fuera (viene por la tarde)` });
 
   // Aviso R1 sin acompañante
   if (state.reglas.r1Acompanante && state.reglas.r1Acompanante.activo) {
     if (currentModal.tipo === 'guardia' && res && res.anio === 'R1' && !state.asignaciones[dateStr + '_guardia2'])
-      msgs.push({ bg:'#fef9c3', border:'#fde047', color:'#854d0e', text:'👥 R1 sin acompañante — recuerda asignar el slot "Acomp."' });
+      msgs.push({ bg:'#f4eee0', border:'#e0d4b4', color:'#6b5328', html:'R1 sin acompañante — recuerda asignar el slot “Acomp.”' });
     if (currentModal.tipo === 'guardia2' && res && res.anio === 'R1')
-      msgs.push({ bg:'#fde8e8', border:'#f98080', color:'#9b1c1c', text:'⚠️ El acompañante no puede ser R1' });
+      msgs.push({ bg:'#efdfdb', border:'#d8bdb6', color:'#6b332c', html:'El acompañante no puede ser R1' });
   }
 
   msgs.forEach(m => {
     const d = document.createElement('div');
-    d.style.cssText = `background:${m.bg};border:1px solid ${m.border};color:${m.color};padding:5px 9px;border-radius:5px;font-size:12px;margin-top:4px`;
-    d.textContent = m.text;
+    d.style.cssText = `background:${m.bg};border:1px solid ${m.border};color:${m.color};padding:6px 10px;border-radius:6px;font-size:12px;margin-top:5px;display:flex;align-items:center;gap:6px`;
+    d.innerHTML = m.html;
     warn.appendChild(d);
   });
 }
@@ -1158,13 +1429,17 @@ function saveAsig() {
   const val = document.getElementById('modal-select').value;
   if (val) state.asignaciones[key] = val;
   else delete state.asignaciones[key];
-  save(); closeModal(); renderCalendario();
+  save(); closeModal();
+  renderCalendario();
+  renderCalendarioBusca();
 }
 
 function clearAsig() {
   if (!currentModal) return;
   delete state.asignaciones[currentModal.dateStr + '_' + currentModal.tipo];
-  save(); closeModal(); renderCalendario();
+  save(); closeModal();
+  renderCalendario();
+  renderCalendarioBusca();
 }
 
 document.getElementById('modal-asig').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
@@ -1799,6 +2074,14 @@ function autoAsignar() {
 // IMPRIMIR / PDF
 // =============================================
 function imprimirCalendario() {
+  imprimirCuadrante({ titulo: 'Cuadrante de Guardias', tipos: [['guardia','G'],['guardia2','A']], pieLeyenda: 'G  Guardia · A  Acompañante R1' });
+}
+
+function imprimirBusca() {
+  imprimirCuadrante({ titulo: 'Calendario de Busca', tipos: [['busca','B']], pieLeyenda: 'B  Busca / localizador' });
+}
+
+function imprimirCuadrante({ titulo, tipos, pieLeyenda }) {
   const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   const y = state.calAnio, m = state.calMes;
   const daysInMonth = new Date(y, m + 1, 0).getDate();
@@ -1815,13 +2098,11 @@ function imprimirCalendario() {
     const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dow = new Date(y, m, d).getDay();
     const isWE = dow === 0 || dow === 6;
-    const gR  = resMap[state.asignaciones[ds + '_guardia']];
-    const g2R = resMap[state.asignaciones[ds + '_guardia2']];
-    const bR  = resMap[state.asignaciones[ds + '_busca']];
-    const slot = (icon, r) => r ? `<div style="background:${r.color};color:white;border-radius:3px;padding:1px 5px;font-size:9px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${icon} ${r.nombre}</div>` : '';
-    cells.push(`<td style="border:1px solid #e5e7eb;vertical-align:top;padding:4px 5px;background:${isWE?'#fff5f5':'white'}">
-      <div style="font-size:10px;font-weight:700;color:${isWE?'#c81e1e':'#6b7280'};margin-bottom:2px">${d}</div>
-      ${slot('🏥',gR)}${slot('👥',g2R)}${slot('📟',bR)}
+    const slot = (letra, r) => r ? `<div style="background:${r.color};color:white;border-radius:3px;padding:2px 6px;font-size:9.5px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px"><span style="background:rgba(255,255,255,.22);padding:0 4px;border-radius:2px;font-family:'IBM Plex Mono',monospace;font-size:8.5px;font-weight:600;letter-spacing:.04em">${letra}</span><span>${r.nombre}</span></div>` : '';
+    const slots = tipos.map(([tipo, letra]) => slot(letra, resMap[state.asignaciones[ds + '_' + tipo]])).join('');
+    cells.push(`<td style="border:1px solid #e3e7ec;vertical-align:top;padding:6px 6px;background:${isWE?'#eef2f4':'white'}">
+      <div style="font-size:10.5px;font-weight:600;color:${isWE?'#7a4a4a':'#5b6b80'};margin-bottom:2px;font-family:'IBM Plex Mono',monospace">${d}</div>
+      ${slots}
     </td>`);
   }
   while (cells.length % 7 !== 0) cells.push('<td></td>');
@@ -1830,44 +2111,102 @@ function imprimirCalendario() {
   for (let i = 0; i < cells.length; i += 7) rows += '<tr>' + cells.slice(i, i+7).join('') + '</tr>';
 
   const legend = state.residentes.map((r,i) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;font-size:9.5px;border:1px solid #e5e7eb;border-radius:4px;padding:2px 7px;background:white;margin:2px">
-      <span style="width:8px;height:8px;border-radius:50%;background:${getColor(r.colorIdx??i)};flex-shrink:0"></span>${r.nombre} (${r.anio})
+    `<span style="display:inline-flex;align-items:center;gap:5px;font-size:10px;border:1px solid #e3e7ec;border-radius:5px;padding:3px 8px;background:white;margin:2px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${getColor(r.colorIdx??i)};flex-shrink:0"></span>${r.nombre} <span style="color:#5b6b80">(${r.anio})</span>
     </span>`).join('');
 
   const popup = window.open('', '_blank', 'width=1100,height=820');
   if (!popup) { alert('Permite ventanas emergentes para generar el PDF.'); return; }
   popup.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Cuadrante ${months[m]} ${y}</title>
+  <title>${titulo} ${months[m]} ${y}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',sans-serif;padding:14px;background:white}
-    h1{font-size:17px;font-weight:700}
-    .sub{font-size:11px;color:#6b7280;margin:2px 0 10px}
-    table{width:100%;border-collapse:collapse;table-layout:fixed}
-    th{padding:5px 4px;font-size:10.5px;text-align:center;background:#f3f4f6;border:1px solid #e5e7eb}
-    td{min-height:66px;height:66px}
-    .legend{margin-top:10px;display:flex;flex-wrap:wrap;gap:0}
-    .btn-print{padding:6px 14px;background:#1a56db;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px}
-    @media print{@page{size:A4 landscape;margin:8mm} .no-print{display:none}}
+    body{font-family:'Public Sans',-apple-system,sans-serif;padding:18px;background:white;color:#0f1c2e}
+    h1{font-size:17px;font-weight:700;letter-spacing:-0.01em}
+    .sub{font-size:11px;color:#5b6b80;margin:4px 0 14px;font-family:'IBM Plex Mono',monospace}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;border:1px solid #e3e7ec;border-radius:6px;overflow:hidden}
+    th{padding:8px 4px;font-size:10.5px;text-align:center;background:#eef2f4;border-right:1px solid #e3e7ec;font-weight:600;color:#5b6b80;text-transform:uppercase;letter-spacing:0.06em}
+    td{min-height:78px;height:78px}
+    .legend{margin-top:14px;display:flex;flex-wrap:wrap;gap:0}
+    .btn-print{padding:7px 14px;background:#0d5b6f;color:white;border:none;border-radius:7px;cursor:pointer;font-size:12px;font-family:inherit;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+    .btn-print:hover{background:#0a4a5b}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand-mark{width:28px;height:28px;border-radius:7px;background:linear-gradient(180deg,#0d5b6f,#0a4a5b);display:flex;align-items:center;justify-content:center}
+    .brand-mark svg{width:14px;height:14px}
+    @media print{@page{size:A4 landscape;margin:10mm} .no-print{display:none}}
   </style></head><body>
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-    <div>
-      <h1>🏥 Cuadrante de Guardias — ${months[m]} ${y}</h1>
-      <p class="sub">Cardiología · Residentes · ${new Date().toLocaleDateString('es-ES', {day:'numeric',month:'long',year:'numeric'})}</p>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z" fill="white"/></svg></div>
+      <div>
+        <h1>${titulo} — ${months[m]} ${y}</h1>
+        <p class="sub">${new Date().toLocaleDateString('es-ES', {day:'numeric',month:'long',year:'numeric'})}</p>
+      </div>
     </div>
-    <button class="btn-print no-print" onclick="window.print()">🖨️ Guardar como PDF</button>
+    <button class="btn-print no-print" onclick="window.print()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+      Guardar como PDF
+    </button>
   </div>
   <table>
     <thead><tr>
       <th>Lunes</th><th>Martes</th><th>Miércoles</th><th>Jueves</th>
-      <th>Viernes</th><th style="color:#c81e1e;background:#fff5f5">Sábado</th><th style="color:#c81e1e;background:#fff5f5">Domingo</th>
+      <th>Viernes</th><th style="color:#7a4a4a;background:#eef2f4">Sábado</th><th style="color:#7a4a4a;background:#eef2f4">Domingo</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>
   <div class="legend">${legend}</div>
-  <div style="margin-top:8px;font-size:9px;color:#9ca3af">🏥 Guardia &nbsp; 👥 Acompañante R1 &nbsp; 📟 Busca</div>
+  <div style="margin-top:10px;font-size:10px;color:#8a96a8;font-family:'IBM Plex Mono',monospace;letter-spacing:0.04em">${pieLeyenda}</div>
   </body></html>`);
   popup.document.close();
+}
+
+function borrarBuscaMes() {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const nombreMes = `${months[state.calMes]} ${state.calAnio}`;
+  if (!confirm(`¿Borrar las asignaciones de busca de ${nombreMes}?`)) return;
+  const prefijo = `${state.calAnio}-${String(state.calMes+1).padStart(2,'0')}`;
+  for (const k of Object.keys(state.asignaciones)) {
+    if (k.startsWith(prefijo) && k.endsWith('_busca')) delete state.asignaciones[k];
+  }
+  save(); renderCalendarioBusca();
+}
+
+function asignarBuscaAGuardia() {
+  const months = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  if (state.residentes.length === 0) { alert('Añade residentes primero.'); return; }
+  const y = state.calAnio, m = state.calMes;
+  const nombreMes = `${months[m]} ${y}`;
+  const sobrescribir = confirm(
+    `Asignar busca a quien tenga guardia en ${nombreMes}.\n\n` +
+    `Aceptar = sobrescribir TODAS las asignaciones de busca con las de guardia.\n` +
+    `Cancelar = solo rellenar los días sin busca (conservar lo existente).`
+  );
+  // Si user cancela y NO quiere sobrescribir, preguntamos si quiere al menos rellenar huecos
+  let rellenarHuecos = true;
+  if (!sobrescribir) {
+    rellenarHuecos = confirm(`¿Rellenar los días que NO tienen busca asignado con la persona de guardia ese día?`);
+    if (!rellenarHuecos) return;
+  }
+
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  let asignados = 0, conservados = 0, sinGuardia = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const guardiaResId = state.asignaciones[ds + '_guardia'];
+    if (!guardiaResId) { sinGuardia++; continue; }
+    const buscaActual = state.asignaciones[ds + '_busca'];
+    if (buscaActual && !sobrescribir) { conservados++; continue; }
+    state.asignaciones[ds + '_busca'] = guardiaResId;
+    asignados++;
+  }
+  save(); renderCalendarioBusca();
+  const lines = [`Busca = guardia · ${nombreMes}`, ''];
+  lines.push(`• ${asignados} día/s asignados`);
+  if (conservados > 0) lines.push(`• ${conservados} día/s ya tenían busca (conservados)`);
+  if (sinGuardia > 0) lines.push(`• ${sinGuardia} día/s sin guardia asignada (vacíos)`);
+  alert(lines.join('\n'));
 }
 
 function imprimirEstadisticas() {
