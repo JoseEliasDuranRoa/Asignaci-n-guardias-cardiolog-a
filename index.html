@@ -224,7 +224,7 @@
   .sol-cell.sin-guardia:hover { background: #ddd0b6; }
 
   /* ESTADÍSTICAS */
-  .stats-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 22px; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 22px; }
   .stat-card { background: white; border-radius: 10px; padding: 16px 18px; border: 1px solid var(--border); text-align: left; min-width: 0; }
   .stat-card .stat-num { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; line-height: 1.1; font-feature-settings: 'tnum'; }
   .stat-card .stat-label { font-size: 10.5px; color: var(--text-muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
@@ -273,8 +273,15 @@
   .rule-disabled { opacity: 0.4; pointer-events: none; }
 
   /* GRÁFICAS */
-  .chart-section { display: flex; flex-wrap: wrap; gap: 20px; padding: 8px 0; overflow-x: auto; }
-  .chart-box { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; }
+  .chart-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; padding: 4px 0; }
+  .chart-box { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px 22px; min-width: 0; }
+  .chart-box .chart-title { font-size: 13px; font-weight: 600; color: var(--text); letter-spacing: -0.005em; line-height: 1.3; }
+  .chart-box .chart-subtitle { font-size: 11.5px; color: var(--text-muted); margin-top: 3px; line-height: 1.4; }
+  .chart-box .chart-legend { display: flex; gap: 14px; margin: 12px 0 16px; font-size: 11px; color: var(--text-muted); flex-wrap: wrap; }
+  .chart-box .chart-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+  .chart-box .chart-legend .sw { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .chart-box .chart-legend .sw-stripe { background: linear-gradient(135deg, #cfd6df 0 50%, #0f1c2e 50% 100%); }
+  .chart-empty { color: var(--text-faint); font-size: 12px; padding: 24px 0; text-align: center; font-style: italic; }
 
   /* HEADER STRIP */
   .toolbar-strip {
@@ -1535,16 +1542,15 @@ function renderStats() {
   const maxGuardias = Math.max(...arr.map(x => x.guardias), 1);
 
   let html = `
-  <div class="section-title">📌 Resumen global</div>
+  <div class="section-title">Resumen global</div>
   <div class="stats-grid">
     <div class="stat-card"><div class="stat-num">${totalGuardias}</div><div class="stat-label">Guardias asignadas</div></div>
     <div class="stat-card"><div class="stat-num">${totalBuscas}</div><div class="stat-label">Buscas asignadas</div></div>
     <div class="stat-card"><div class="stat-num">${arr.reduce((a,b)=>a+b.guardiasFinde,0)}</div><div class="stat-label">Guardias en finde</div></div>
-    <div class="stat-card"><div class="stat-num">${totalAus}</div><div class="stat-label">Días de ausencia</div></div>
     <div class="stat-card"><div class="stat-num">${state.residentes.length}</div><div class="stat-label">Residentes</div></div>
   </div>`;
 
-  html += `<div class="section-title">👤 Por residente</div>
+  html += `<div class="section-title">Por residente</div>
   <div class="stats-tabla-wrapper">
   <table>
     <thead>
@@ -1557,8 +1563,7 @@ function renderStats() {
         <th style="text-align:center">Buscas</th>
         <th style="text-align:center">Dobl. lab</th>
         <th style="text-align:center">Dobl. finde</th>
-        <th>✈ Rotación externa</th>
-        <th style="text-align:center">Aus. (días)</th>
+        <th>Rotación externa</th>
         <th style="min-width:120px">Distribución</th>
       </tr>
     </thead>
@@ -1578,7 +1583,6 @@ function renderStats() {
       <td style="text-align:center">${s.dobletesLab > 0 ? `<span style="font-weight:700;color:var(--warning)">${s.dobletesLab}</span>` : '—'}</td>
       <td style="text-align:center">${s.dobleteFinde > 0 ? `<span style="font-weight:700;color:var(--danger)">${s.dobleteFinde}</span>` : '—'}</td>
       <td>${s.rotaInicio ? `<span class="badge badge-rotando">✈ ${s.rotaInicio} → ${s.rotaFin}</span>${s.guardiasRota > 0 ? `<br><span style="font-size:11px;color:var(--text-muted)">${s.guardiasRota} guardia${s.guardiasRota>1?'s':''} durante rotación</span>` : ''}` : '<span style="color:var(--text-muted)">—</span>'}</td>
-      <td style="text-align:center;font-weight:700">${s.ausencias.total > 0 ? s.ausencias.total : '—'}</td>
       <td>
         <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
         <div style="font-size:10px;color:var(--text-muted);margin-top:2px">${s.guardias} guardias</div>
@@ -1599,7 +1603,7 @@ function renderStats() {
     pa.ausOtro += s.ausencias.otro; pa.n++;
   });
 
-  html += `<div class="section-title">🎓 Por año de residencia</div>
+  html += `<div class="section-title">Por año de residencia</div>
   <div class="stats-tabla-wrapper">
   <table>
     <thead>
@@ -1611,7 +1615,6 @@ function renderStats() {
         <th style="text-align:center">Media buscas</th>
         <th style="text-align:center">Dobl. lab</th>
         <th style="text-align:center">Dobl. finde</th>
-        <th style="text-align:center">Media aus. (días)</th>
       </tr>
     </thead>
     <tbody>`;
@@ -1628,7 +1631,6 @@ function renderStats() {
       <td style="text-align:center">${(pa.buscas/n).toFixed(1)}</td>
       <td style="text-align:center;font-weight:700;color:var(--warning)">${pa.dobLab || '—'}</td>
       <td style="text-align:center;font-weight:700;color:var(--danger)">${pa.dobFinde || '—'}</td>
-      <td style="text-align:center;font-weight:700">${(pa.ausTotal/n).toFixed(1)}</td>
     </tr>`;
 
     arr.filter(s => s.anio === a).forEach(s => {
@@ -1640,7 +1642,6 @@ function renderStats() {
         <td style="text-align:center;font-size:12px">${s.buscas}</td>
         <td style="text-align:center;font-size:12px;color:var(--warning)">${s.dobletesLab || '—'}</td>
         <td style="text-align:center;font-size:12px;color:var(--danger)">${s.dobleteFinde || '—'}</td>
-        <td style="text-align:center;font-size:12px">${s.ausencias.total || '—'}</td>
       </tr>`;
     });
   });
@@ -1651,28 +1652,61 @@ function renderStats() {
   const sortedG = [...arr].sort((a,b) => b.guardias - a.guardias);
   const maxG = Math.max(...arr.map(x => x.guardias), 1);
   const maxB = Math.max(...arr.map(x => x.buscas), 1);
-  const trunca = n => n.length > 17 ? n.slice(0,15) + '…' : n;
+  const trunca = n => n.length > 16 ? n.slice(0,14) + '…' : n;
 
-  const c1 = svgBarChart('Guardias por residente  (barra roja = finde)',
-    sortedG.map(s => ({ label: trunca(s.nombre), value: s.guardias, sub: s.guardiasFinde, color: getColor(s.colorIdx) })), maxG);
-
-  const itemsB = sortedG.filter(s => s.buscas > 0)
-    .map(s => ({ label: trunca(s.nombre), value: s.buscas, sub: 0, color: getColor(s.colorIdx) }));
-  const c2 = svgBarChart('Buscas por residente', itemsB, maxB);
-
-  const c3Items = sortedG.filter(s => s.guardias > 0).map(s => ({
+  // Chart 1: Distribución de guardias (stacked laborables + finde)
+  const items1 = sortedG.filter(s => s.guardias > 0).map(s => ({
     label: trunca(s.nombre),
-    value: s.guardiasLab,
+    value: s.guardias,
     sub: s.guardiasFinde,
     color: getColor(s.colorIdx)
   }));
-  const c3 = svgBarChart('Laborables vs finde por residente', c3Items, maxG);
+  const c1 = items1.length ? renderChartCard({
+    title: 'Distribución de guardias',
+    subtitle: 'Total por residente, con la porción de fin de semana en tono oscuro',
+    legend: [
+      { kind:'sw', color:'currentRes', label:'Laborable' },
+      { kind:'sw-stripe', label:'Fin de semana' }
+    ],
+    svg: svgBarChart(items1, maxG, { stacked: true })
+  }) : '';
 
-  html += `<div class="section-title">📈 Gráficas</div>
+  // Chart 2: Buscas asignados
+  const itemsB = sortedG.filter(s => s.buscas > 0)
+    .map(s => ({ label: trunca(s.nombre), value: s.buscas, color: getColor(s.colorIdx) }));
+  const c2 = itemsB.length ? renderChartCard({
+    title: 'Buscas asignados',
+    subtitle: 'Total de localizadores cubiertos por residente',
+    svg: svgBarChart(itemsB, maxB, { stacked: false })
+  }) : '';
+
+  // Chart 3: Promedio por año de residencia
+  const aniosPresentes = ['R1','R2','R3','R4','R5'].filter(a => porAnio[a]);
+  const maxAvg = Math.max(...aniosPresentes.map(a => porAnio[a].guardias / porAnio[a].n), 1);
+  const items3 = aniosPresentes.map(a => {
+    const pa = porAnio[a];
+    return {
+      label: `${a}  ·  ${pa.n} res.`,
+      value: +(pa.guardias / pa.n).toFixed(1),
+      sub: +(pa.finde / pa.n).toFixed(1),
+      color: R_BAR_COLOR[a] || 'var(--primary)'
+    };
+  });
+  const c3 = items3.length ? renderChartCard({
+    title: 'Promedio por año de residencia',
+    subtitle: 'Media de guardias y guardias de fin de semana por residente',
+    legend: [
+      { kind:'sw', color:'#0d5b6f', label:'Media de guardias' },
+      { kind:'sw-stripe', label:'De ellas, fin de semana' }
+    ],
+    svg: svgBarChart(items3, maxAvg, { stacked: true, valFmt: it => `${it.value.toFixed(1)} · ${it.sub.toFixed(1)}f` })
+  }) : '';
+
+  html += `<div class="section-title">Distribución</div>
   <div class="chart-section">
-    ${c1 ? `<div class="chart-box">${c1}</div>` : ''}
-    ${c2 ? `<div class="chart-box">${c2}</div>` : ''}
-    ${c3 ? `<div class="chart-box">${c3}</div>` : ''}
+    ${c1}
+    ${c2}
+    ${c3}
   </div>`;
 
   content.innerHTML = html;
@@ -1681,29 +1715,77 @@ function renderStats() {
 // =============================================
 // GRÁFICAS SVG
 // =============================================
-function svgBarChart(title, items, maxVal) {
+const R_BAR_COLOR = { R1:'#a87410', R2:'#0d5b6f', R3:'#136639', R4:'#9f2920', R5:'#5a3b8f' };
+
+function darkenHex(hex, factor) {
+  const c = hex.replace('#','');
+  if (c.length !== 6) return hex;
+  const r = parseInt(c.slice(0,2),16);
+  const g = parseInt(c.slice(2,4),16);
+  const b = parseInt(c.slice(4,6),16);
+  const f = v => Math.max(0, Math.min(255, Math.round(v * factor))).toString(16).padStart(2,'0');
+  return `#${f(r)}${f(g)}${f(b)}`;
+}
+
+function renderChartCard({ title, subtitle, legend, svg }) {
+  if (!svg) return '';
+  let legendHtml = '';
+  if (legend && legend.length) {
+    legendHtml = '<div class="chart-legend">' + legend.map(l => {
+      if (l.kind === 'sw-stripe') return `<span><span class="sw sw-stripe"></span>${esc(l.label)}</span>`;
+      const color = l.color && l.color !== 'currentRes' ? l.color : 'var(--text-muted)';
+      return `<span><span class="sw" style="background:${color}"></span>${esc(l.label)}</span>`;
+    }).join('') + '</div>';
+  }
+  return `<div class="chart-box">
+    <div class="chart-title">${esc(title)}</div>
+    ${subtitle ? `<div class="chart-subtitle">${esc(subtitle)}</div>` : ''}
+    ${legendHtml}
+    ${svg}
+  </div>`;
+}
+
+function svgBarChart(items, maxVal, opts = {}) {
   if (!items.length) return '';
-  const lw = 148, bw = 270, bh = 22, gap = 5;
-  const H = items.length * (bh + gap) + 38;
-  const W = lw + bw + 60;
+  const LW = 150, BW = 280, BH = 18, GAP = 10;
+  const H = items.length * (BH + GAP) + 8;
+  const W = LW + BW + 80;
+  const valFmt = opts.valFmt || (it => (opts.stacked && it.sub > 0) ? `${it.value} · ${it.sub}` : String(it.value));
+
   let rows = '';
+  // Faint baseline ticks at 0%, 50%, 100%
+  for (let t = 0; t <= 1; t += 0.5) {
+    const x = LW + t * BW;
+    rows += `<line x1="${x}" y1="2" x2="${x}" y2="${H-2}" stroke="#e3e7ec" stroke-width="1" stroke-dasharray="${t===0?'':'2 3'}"/>`;
+  }
+
   items.forEach((it, i) => {
-    const y = 26 + i * (bh + gap);
-    const w1 = maxVal > 0 ? Math.round((it.value / maxVal) * bw) : 0;
-    rows += `<text x="${lw-6}" y="${y+bh/2+4}" text-anchor="end" font-size="10.5" fill="#374151">${it.label}</text>
-    <rect x="${lw}" y="${y}" width="${bw}" height="${bh}" fill="#f3f4f6" rx="3"/>`;
-    if (w1 > 0) rows += `<rect x="${lw}" y="${y}" width="${w1}" height="${bh}" fill="${it.color}" rx="3" opacity="0.85"/>`;
-    if (it.sub > 0) {
-      const w2 = Math.round((it.sub / maxVal) * bw);
-      rows += `<rect x="${lw}" y="${y+bh-5}" width="${w2}" height="5" fill="#b91c1c" rx="0" opacity="0.65"/>`;
+    const y = i * (BH + GAP) + 4;
+    const totalW = (it.value / maxVal) * BW;
+    const labVal = (it.sub !== undefined) ? (it.value - it.sub) : it.value;
+    const labW = (labVal / maxVal) * BW;
+    const finW = ((it.sub || 0) / maxVal) * BW;
+
+    // name
+    rows += `<text x="${LW-10}" y="${y+BH/2+4}" text-anchor="end" font-size="11.5" fill="#0f1c2e" font-weight="500">${esc(it.label)}</text>`;
+    // track
+    rows += `<rect x="${LW}" y="${y}" width="${BW}" height="${BH}" fill="#f5f7f8" rx="3"/>`;
+
+    if (opts.stacked && it.sub !== undefined && it.sub > 0) {
+      if (labW > 0) {
+        rows += `<rect x="${LW}" y="${y}" width="${labW.toFixed(1)}" height="${BH}" fill="${it.color}" rx="3"/>`;
+      }
+      const dark = it.color.startsWith('#') ? darkenHex(it.color, 0.55) : it.color;
+      rows += `<rect x="${(LW+labW).toFixed(1)}" y="${y}" width="${finW.toFixed(1)}" height="${BH}" fill="${dark}" rx="3"/>`;
+    } else if (totalW > 0) {
+      rows += `<rect x="${LW}" y="${y}" width="${totalW.toFixed(1)}" height="${BH}" fill="${it.color}" rx="3"/>`;
     }
-    const txt = it.sub > 0 ? `${it.value}  (${it.sub} finde)` : String(it.value);
-    rows += `<text x="${lw+w1+5}" y="${y+bh/2+4}" font-size="10" font-weight="700" fill="#1f2937">${txt}</text>`;
+
+    // value
+    rows += `<text x="${LW + totalW + 8}" y="${y+BH/2+4}" font-size="11" font-weight="600" fill="#0f1c2e" font-family="'IBM Plex Mono',monospace">${valFmt(it)}</text>`;
   });
-  return `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="font-family:'Segoe UI',sans-serif;overflow:visible;display:block">
-    <text x="${W/2}" y="15" text-anchor="middle" font-size="12" font-weight="700" fill="#111827">${title}</text>
-    ${rows}
-  </svg>`;
+
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" style="font-family:'Public Sans',sans-serif;display:block;max-width:100%;height:auto">${rows}</svg>`;
 }
 
 // =============================================
