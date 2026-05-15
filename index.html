@@ -221,6 +221,8 @@
   .sol-table .dow-header { font-size: 10px; color: var(--text-faint); font-family: var(--mono); }
   .sol-table th.weekend-col { background: #cfe2ea; color: #2a5563; }
   .sol-table td.weekend-col { background: #e3eff4; }
+  .sol-table th.holiday-col { background: #f0dcc4; color: #7a5526; }
+  .sol-table td.holiday-col { background: #f8ecda; }
   .sol-table td.name-col { text-align: left; padding: 6px 12px; font-weight: 500; background: white; }
   .sol-cell { width: 24px; height: 24px; border-radius: 4px; cursor: pointer; transition: all .1s; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
   .sol-cell:hover:not(.libre):not(.sin-guardia) { background: var(--primary-soft); box-shadow: inset 0 0 0 1px var(--primary); }
@@ -1532,6 +1534,35 @@ function buildMesOptions(selectId, selected) {
   }
 }
 
+function domingoPascua(year) {
+  // Algoritmo de Gauss / Anonymous Gregorian
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+  const d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const mth = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * mth + 114) / 31);
+  const day = ((h + l - 7 * mth + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+
+function getFestivosMadrid(year) {
+  const pad = n => String(n).padStart(2, '0');
+  const set = new Set();
+  // Fijos: nacionales + Comunidad de Madrid + Madrid capital (San Isidro 15-may, Almudena 09-nov)
+  ['01-01','01-06','05-01','05-02','05-15','08-15','10-12','11-01','11-09','12-06','12-08','12-25']
+    .forEach(md => set.add(`${year}-${md}`));
+  // Movibles: Jueves y Viernes Santo
+  const pascua = domingoPascua(year);
+  [-3, -2].forEach(off => {
+    const dt = new Date(pascua); dt.setDate(pascua.getDate() + off);
+    set.add(`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`);
+  });
+  return set;
+}
+
 function buildSolGrid(dias, storeObj, toggleFn, conflictClass, badgeId, cellClass) {
   if (state.residentes.length === 0) return '<p class="text-muted">Añade residentes primero.</p>';
   const threshold = Math.max(2, Math.ceil(state.residentes.length / 3));
@@ -1543,11 +1574,20 @@ function buildSolGrid(dias, storeObj, toggleFn, conflictClass, badgeId, cellClas
   const badge = document.getElementById(badgeId);
   badge.textContent = conflictDays > 0 ? `⚠️ ${conflictDays} días con conflicto` : '';
 
+  const festivos = new Set();
+  const aniosVistos = new Set();
+  dias.forEach(({ds}) => {
+    const yr = +ds.slice(0, 4);
+    if (!aniosVistos.has(yr)) { aniosVistos.add(yr); getFestivosMadrid(yr).forEach(f => festivos.add(f)); }
+  });
+
   let html = '<table class="sol-table"><thead><tr><th class="name-col">Residente</th>';
   dias.forEach(({d, ds, dow}) => {
     const isWE = dow === 0 || dow === 6;
+    const isHol = festivos.has(ds);
+    const colCls = isHol ? 'holiday-col' : (isWE ? 'weekend-col' : '');
     const isConflict = conflictCount[ds] >= threshold;
-    html += `<th class="${isWE ? 'weekend-col' : ''} ${isConflict ? conflictClass : ''}">${d}<br><span class="dow-header">${['D','L','M','X','J','V','S'][dow]}</span></th>`;
+    html += `<th class="${colCls} ${isConflict ? conflictClass : ''}">${d}<br><span class="dow-header">${['D','L','M','X','J','V','S'][dow]}</span></th>`;
   });
   html += '</tr></thead><tbody>';
   state.residentes.forEach((r, ri) => {
@@ -1555,9 +1595,11 @@ function buildSolGrid(dias, storeObj, toggleFn, conflictClass, badgeId, cellClas
     html += `<tr><td class="name-col"><span class="dot" style="background:${color}"></span>${esc(r.nombre)} <span class="badge badge-${r.anio.toLowerCase()}">${r.anio}</span></td>`;
     dias.forEach(({ds, dow}) => {
       const isWE = dow === 0 || dow === 6;
+      const isHol = festivos.has(ds);
+      const colCls = isHol ? 'holiday-col' : (isWE ? 'weekend-col' : '');
       const key = ds + '_' + r.id;
       const marcado = !!storeObj[key];
-      html += `<td class="${isWE ? 'weekend-col' : ''}"><div class="sol-cell ${marcado ? cellClass : ''}" onclick="${toggleFn}('${key}')">${marcado ? '✗' : ''}</div></td>`;
+      html += `<td class="${colCls}"><div class="sol-cell ${marcado ? cellClass : ''}" onclick="${toggleFn}('${key}')">${marcado ? '✗' : ''}</div></td>`;
     });
     html += '</tr>';
   });
