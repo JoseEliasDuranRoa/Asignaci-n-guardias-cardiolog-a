@@ -712,8 +712,74 @@
     .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 </style>
+  /* AUTH OVERLAY */
+  #auth-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: linear-gradient(160deg, #0d5b6f, #0a3a47);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  #auth-overlay.hidden { display: none; }
+  .auth-card {
+    background: white; border-radius: 16px; padding: 32px 30px;
+    width: 100%; max-width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  }
+  .auth-card h1 { font-size: 22px; font-weight: 700; color: #0f1c2e; margin-bottom: 4px; }
+  .auth-card .auth-sub { font-size: 13px; color: #6b7280; margin-bottom: 22px; }
+  .auth-card label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin: 12px 0 5px; }
+  .auth-card input {
+    width: 100%; padding: 11px 13px; border: 1px solid #d1d5db; border-radius: 8px;
+    font-size: 14px; font-family: inherit; outline: none; transition: border-color .15s;
+  }
+  .auth-card input:focus { border-color: #0d5b6f; }
+  .auth-btn {
+    width: 100%; margin-top: 20px; padding: 12px; border: none; border-radius: 8px;
+    background: #0d5b6f; color: white; font-size: 15px; font-weight: 600;
+    cursor: pointer; font-family: inherit; transition: background .15s;
+  }
+  .auth-btn:hover { background: #0a4a5b; }
+  .auth-btn:disabled { opacity: .6; cursor: default; }
+  .auth-toggle { margin-top: 16px; text-align: center; font-size: 13px; color: #6b7280; }
+  .auth-toggle a { color: #0d5b6f; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .auth-msg { margin-top: 14px; font-size: 13px; padding: 9px 12px; border-radius: 7px; display: none; }
+  .auth-msg.err { display: block; background: #fde8e8; color: #9b1c1c; border: 1px solid #f8b4b4; }
+  .auth-msg.ok  { display: block; background: #def7ec; color: #03543f; border: 1px solid #84e1bc; }
+  .auth-userbar {
+    display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted);
+  }
+  .auth-userbar .role-pill {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    padding: 2px 7px; border-radius: 999px; background: var(--bg-soft); color: var(--text);
+  }
+  .auth-userbar .role-pill.admin { background: #0d5b6f; color: white; }
+  .auth-userbar button {
+    font-size: 12px; padding: 4px 10px; border: 1px solid var(--border-strong);
+    background: white; border-radius: 6px; cursor: pointer; color: var(--text-muted);
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+<div id="auth-overlay">
+  <div class="auth-card">
+    <h1>Guardias</h1>
+    <p class="auth-sub" id="auth-sub">Sistema de gestión · inicia sesión</p>
+    <div id="auth-name-group" style="display:none">
+      <label for="auth-name">Nombre completo</label>
+      <input type="text" id="auth-name" autocomplete="name" placeholder="Nombre y apellidos">
+    </div>
+    <label for="auth-email">Email</label>
+    <input type="email" id="auth-email" autocomplete="email" placeholder="tu@email.com">
+    <label for="auth-pass">Contraseña</label>
+    <input type="password" id="auth-pass" autocomplete="current-password" placeholder="••••••••">
+    <div class="auth-msg" id="auth-msg"></div>
+    <button class="auth-btn" id="auth-btn" onclick="authSubmit()">Entrar</button>
+    <div class="auth-toggle" id="auth-toggle">
+      ¿No tienes cuenta? <a onclick="authToggleMode()">Crear cuenta</a>
+    </div>
+  </div>
+</div>
 
 <header>
   <div class="brand">
@@ -728,6 +794,7 @@
     </div>
   </div>
   <div class="header-actions">
+    <div class="auth-userbar" id="auth-userbar"></div>
     <button class="header-btn" onclick="exportarDatos()" title="Exportar datos">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
       Exportar
@@ -3165,6 +3232,132 @@ document.querySelectorAll('.sheet-handle').forEach(h => {
 // Close any open sheet on browser back (mobile UX nicety)
 window.addEventListener('popstate', function() {
   document.querySelectorAll('.modal-overlay.open').forEach(o => o.classList.remove('open'));
+});
+</script>
+
+<script>
+// =============================================
+// AUTENTICACIÓN (Supabase)
+// =============================================
+const SB_URL = 'https://ysxtsnlxtsqlrkccmerx.supabase.co';
+const SB_KEY = 'sb_publishable_tbWBfhVVscAmCdqVPV_MxQ_6IoP-yGV';
+const sbClient = window.supabase.createClient(SB_URL, SB_KEY);
+
+let authMode = 'login'; // 'login' | 'signup'
+let currentUser = null;
+let currentProfile = null;
+
+function authMsg(text, kind) {
+  const el = document.getElementById('auth-msg');
+  el.textContent = text;
+  el.className = 'auth-msg ' + (kind || '');
+  if (!text) el.className = 'auth-msg';
+}
+
+function authToggleMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  const isSignup = authMode === 'signup';
+  document.getElementById('auth-name-group').style.display = isSignup ? 'block' : 'none';
+  document.getElementById('auth-sub').textContent =
+    isSignup ? 'Sistema de gestión · crea tu cuenta' : 'Sistema de gestión · inicia sesión';
+  document.getElementById('auth-btn').textContent = isSignup ? 'Crear cuenta' : 'Entrar';
+  document.getElementById('auth-pass').setAttribute('autocomplete', isSignup ? 'new-password' : 'current-password');
+  document.getElementById('auth-toggle').innerHTML = isSignup
+    ? '¿Ya tienes cuenta? <a onclick="authToggleMode()">Iniciar sesión</a>'
+    : '¿No tienes cuenta? <a onclick="authToggleMode()">Crear cuenta</a>';
+  authMsg('');
+}
+
+async function authSubmit() {
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-pass').value;
+  const btn = document.getElementById('auth-btn');
+  if (!email || !pass) { authMsg('Rellena email y contraseña.', 'err'); return; }
+  btn.disabled = true;
+  authMsg('');
+  try {
+    if (authMode === 'signup') {
+      const nombre = document.getElementById('auth-name').value.trim();
+      if (!nombre) { authMsg('Pon tu nombre completo.', 'err'); btn.disabled = false; return; }
+      const { error } = await sbClient.auth.signUp({
+        email, password: pass, options: { data: { nombre } }
+      });
+      if (error) throw error;
+      if (authMode === 'signup') authToggleMode(); // volver a modo login
+      document.getElementById('auth-pass').value = '';
+      authMsg('Cuenta creada. Ahora inicia sesión.', 'ok');
+    } else {
+      const { error } = await sbClient.auth.signInWithPassword({ email, password: pass });
+      if (error) throw error;
+      // onAuthStateChange se encarga de entrar
+    }
+  } catch (e) {
+    authMsg(traduceAuthError(e.message || String(e)), 'err');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function traduceAuthError(m) {
+  if (/Invalid login credentials/i.test(m)) return 'Email o contraseña incorrectos.';
+  if (/User already registered/i.test(m)) return 'Ya existe una cuenta con ese email.';
+  if (/Password should be at least/i.test(m)) return 'La contraseña debe tener al menos 6 caracteres.';
+  if (/Email not confirmed/i.test(m)) return 'Email sin confirmar. Avisa al administrador.';
+  if (/signups not allowed|Signups not allowed/i.test(m)) return 'El registro está cerrado. Pide invitación al administrador.';
+  return m;
+}
+
+async function authLogout() {
+  await sbClient.auth.signOut();
+  location.reload();
+}
+
+async function loadProfile() {
+  if (!currentUser) { currentProfile = null; return; }
+  const { data, error } = await sbClient
+    .from('profiles').select('nombre, role, residente_id')
+    .eq('id', currentUser.id).maybeSingle();
+  currentProfile = error ? null : data;
+}
+
+function renderUserBar() {
+  const bar = document.getElementById('auth-userbar');
+  if (!bar || !currentUser) { if (bar) bar.innerHTML = ''; return; }
+  const rol = currentProfile ? currentProfile.role : '—';
+  const nombre = (currentProfile && currentProfile.nombre) || currentUser.email;
+  bar.innerHTML =
+    `<span>${nombre}</span>` +
+    `<span class="role-pill ${rol === 'admin' ? 'admin' : ''}">${rol}</span>` +
+    `<button onclick="authLogout()">Salir</button>`;
+}
+
+async function showApp() {
+  await loadProfile();
+  renderUserBar();
+  document.getElementById('auth-overlay').classList.add('hidden');
+}
+
+function showLogin() {
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  const ub = document.getElementById('auth-userbar');
+  if (ub) ub.innerHTML = '';
+}
+
+sbClient.auth.onAuthStateChange((event, session) => {
+  currentUser = session ? session.user : null;
+  if (currentUser) showApp();
+  else showLogin();
+});
+
+(async function authInit() {
+  const { data } = await sbClient.auth.getSession();
+  currentUser = data.session ? data.session.user : null;
+  if (currentUser) await showApp();
+  else showLogin();
+})();
+
+document.getElementById('auth-pass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') authSubmit();
 });
 </script>
 
