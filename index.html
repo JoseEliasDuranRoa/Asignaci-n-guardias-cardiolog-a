@@ -221,8 +221,8 @@
   .sol-table .dow-header { font-size: 10px; color: var(--text-faint); font-family: var(--mono); }
   .sol-table th.weekend-col { background: #cfe2ea; color: #2a5563; }
   .sol-table td.weekend-col { background: #e3eff4; }
-  .sol-table th.holiday-col { background: #f0dcc4; color: #7a5526; }
-  .sol-table td.holiday-col { background: #f8ecda; }
+  .sol-table th.holiday-col { background: #d4d7db; color: #474c52; }
+  .sol-table td.holiday-col { background: #ebecee; }
   .sol-table td.name-col { text-align: left; padding: 6px 12px; font-weight: 500; background: white; }
   .sol-cell { width: 24px; height: 24px; border-radius: 4px; cursor: pointer; transition: all .1s; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
   .sol-cell:hover:not(.libre):not(.sin-guardia) { background: var(--primary-soft); box-shadow: inset 0 0 0 1px var(--primary); }
@@ -477,7 +477,8 @@
     position: relative;
   }
   .sol-mobile .day-cell:active { transform: scale(0.92); }
-  .sol-mobile .day-cell.we { background: var(--bg-soft); color: #7a4a4a; }
+  .sol-mobile .day-cell.we { background: #e3eff4; color: #2a5563; }
+  .sol-mobile .day-cell.hol { background: #ebecee; color: #474c52; border-color: #cdcfd3; }
   .sol-mobile .day-cell.marked { background: #e8d8d4; color: #6b332c; border-color: #d8bdb6; }
   .sol-mobile .day-cell.marked-sg { background: #ece3d2; color: #6b5328; border-color: #d6c8a8; }
   .sol-mobile .day-cell .dow { font-size: 8.5px; font-weight: 500; opacity: 0.6; line-height: 1; margin-top: 2px; text-transform: uppercase; }
@@ -1240,9 +1241,9 @@
 // ESTADO
 // =============================================
 const COLORS = [
-  '#1a56db','#057a55','#c27803','#9333ea','#e02424',
-  '#0891b2','#be185d','#15803d','#b45309','#4338ca',
-  '#0f766e','#b91c1c','#7c3aed','#1d4ed8','#065f46'
+  '#1DBD8E','#2D3F54','#52647A','#73CC80','#004C94',
+  '#006ECF','#3C93FA','#00D4C6','#0FA69D','#028183',
+  '#F24F4F','#FF8F5C','#EEB72B','#FF57B0','#9151B8'
 ];
 const AUS_ICONS = {
   master:   '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;display:inline-block"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>',
@@ -3058,6 +3059,12 @@ function buildSolMobile(dias, store, toggleFn, cellMark) {
   if (state.residentes.length === 0)
     return '<p class="text-muted" style="padding:6px 2px">Añade residentes primero.</p>';
   const DOW_LETTERS = ['D','L','M','X','J','V','S'];
+  const festivos = new Set();
+  const aniosVistos = new Set();
+  dias.forEach(({ds}) => {
+    const yr = +ds.slice(0, 4);
+    if (!aniosVistos.has(yr)) { aniosVistos.add(yr); getFestivosMadrid(yr).forEach(f => festivos.add(f)); }
+  });
   return state.residentes.map((r, ri) => {
     const color = getColor(r.colorIdx ?? ri);
     const marcados = dias.filter(({ds}) => !!store[ds + '_' + r.id]).length;
@@ -3065,8 +3072,9 @@ function buildSolMobile(dias, store, toggleFn, cellMark) {
     dias.forEach(({d, ds, dow}) => {
       const key = ds + '_' + r.id;
       const isWE = dow === 0 || dow === 6;
+      const isHol = festivos.has(ds);
       const marked = !!store[key];
-      const cls = ['day-cell', isWE ? 'we' : '', marked ? cellMark : ''].filter(Boolean).join(' ');
+      const cls = ['day-cell', isHol ? 'hol' : (isWE ? 'we' : ''), marked ? cellMark : ''].filter(Boolean).join(' ');
       cells += `<div class="${cls}" onclick="${toggleFn}('${key}')">${d}<span class="dow">${DOW_LETTERS[dow]}</span></div>`;
     });
     return `
