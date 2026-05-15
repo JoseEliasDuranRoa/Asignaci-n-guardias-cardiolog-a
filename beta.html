@@ -724,7 +724,15 @@
     background: white; border-radius: 16px; padding: 32px 30px;
     width: 100%; max-width: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.3);
   }
-  .auth-card h1 { font-size: 22px; font-weight: 700; color: #0f1c2e; margin-bottom: 4px; }
+  .auth-mark {
+    width: 52px; height: 52px; border-radius: 13px; margin: 0 auto 16px;
+    background: linear-gradient(180deg, #0d5b6f 0%, #0a4a5b 100%);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(13,91,111,.35), inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  .auth-mark svg { width: 26px; height: 26px; }
+  .auth-card h1 { font-size: 22px; font-weight: 700; color: #0f1c2e; margin-bottom: 4px; text-align: center; }
+  .auth-card .auth-sub { text-align: center; }
   .auth-card .auth-sub { font-size: 13px; color: #6b7280; margin-bottom: 22px; }
   .auth-card label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin: 12px 0 5px; }
   .auth-card input {
@@ -763,8 +771,13 @@
 
 <div id="auth-overlay">
   <div class="auth-card">
+    <div class="auth-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z" fill="white"></path>
+      </svg>
+    </div>
     <h1>Guardias</h1>
-    <p class="auth-sub" id="auth-sub">Sistema de gestión · inicia sesión</p>
+    <p class="auth-sub" id="auth-sub">Sistema de gestión · Inicia Sesión</p>
     <div id="auth-name-group" style="display:none">
       <label for="auth-name">Nombre completo</label>
       <input type="text" id="auth-name" autocomplete="name" placeholder="Nombre y apellidos">
@@ -776,7 +789,7 @@
     <div class="auth-msg" id="auth-msg"></div>
     <button class="auth-btn" id="auth-btn" onclick="authSubmit()">Entrar</button>
     <div class="auth-toggle" id="auth-toggle">
-      ¿No tienes cuenta? <a onclick="authToggleMode()">Crear cuenta</a>
+      ¿No tienes cuenta? <a onclick="authToggleMode()">Crear Cuenta</a>
     </div>
   </div>
 </div>
@@ -3259,12 +3272,12 @@ function authToggleMode() {
   const isSignup = authMode === 'signup';
   document.getElementById('auth-name-group').style.display = isSignup ? 'block' : 'none';
   document.getElementById('auth-sub').textContent =
-    isSignup ? 'Sistema de gestión · crea tu cuenta' : 'Sistema de gestión · inicia sesión';
-  document.getElementById('auth-btn').textContent = isSignup ? 'Crear cuenta' : 'Entrar';
+    isSignup ? 'Sistema de gestión · Crea Tu Cuenta' : 'Sistema de gestión · Inicia Sesión';
+  document.getElementById('auth-btn').textContent = isSignup ? 'Crear Cuenta' : 'Entrar';
   document.getElementById('auth-pass').setAttribute('autocomplete', isSignup ? 'new-password' : 'current-password');
   document.getElementById('auth-toggle').innerHTML = isSignup
-    ? '¿Ya tienes cuenta? <a onclick="authToggleMode()">Iniciar sesión</a>'
-    : '¿No tienes cuenta? <a onclick="authToggleMode()">Crear cuenta</a>';
+    ? '¿Ya tienes cuenta? <a onclick="authToggleMode()">Iniciar Sesión</a>'
+    : '¿No tienes cuenta? <a onclick="authToggleMode()">Crear Cuenta</a>';
   authMsg('');
 }
 
@@ -3285,7 +3298,7 @@ async function authSubmit() {
       if (error) throw error;
       if (authMode === 'signup') authToggleMode(); // volver a modo login
       document.getElementById('auth-pass').value = '';
-      authMsg('Cuenta creada. Ahora inicia sesión.', 'ok');
+      authMsg('Cuenta creada. Ahora Inicia Sesión.', 'ok');
     } else {
       const { error } = await sbClient.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
