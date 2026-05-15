@@ -219,7 +219,8 @@
   .sol-table tr:first-child th:last-child { border-top-right-radius: 6px; }
   .sol-table th.name-col { min-width: 180px; text-align: left; padding: 8px 12px; }
   .sol-table .dow-header { font-size: 10px; color: var(--text-faint); font-family: var(--mono); }
-  .sol-table .weekend-col { background: var(--bg-soft); }
+  .sol-table th.weekend-col { background: #cfe2ea; color: #2a5563; }
+  .sol-table td.weekend-col { background: #e3eff4; }
   .sol-table td.name-col { text-align: left; padding: 6px 12px; font-weight: 500; background: white; }
   .sol-cell { width: 24px; height: 24px; border-radius: 4px; cursor: pointer; transition: all .1s; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
   .sol-cell:hover:not(.libre):not(.sin-guardia) { background: var(--primary-soft); box-shadow: inset 0 0 0 1px var(--primary); }
@@ -1552,10 +1553,11 @@ function buildSolGrid(dias, storeObj, toggleFn, conflictClass, badgeId, cellClas
   state.residentes.forEach((r, ri) => {
     const color = getColor(r.colorIdx ?? ri);
     html += `<tr><td class="name-col"><span class="dot" style="background:${color}"></span>${esc(r.nombre)} <span class="badge badge-${r.anio.toLowerCase()}">${r.anio}</span></td>`;
-    dias.forEach(({ds}) => {
+    dias.forEach(({ds, dow}) => {
+      const isWE = dow === 0 || dow === 6;
       const key = ds + '_' + r.id;
       const marcado = !!storeObj[key];
-      html += `<td><div class="sol-cell ${marcado ? cellClass : ''}" onclick="${toggleFn}('${key}')">${marcado ? '✗' : ''}</div></td>`;
+      html += `<td class="${isWE ? 'weekend-col' : ''}"><div class="sol-cell ${marcado ? cellClass : ''}" onclick="${toggleFn}('${key}')">${marcado ? '✗' : ''}</div></td>`;
     });
     html += '</tr>';
   });
