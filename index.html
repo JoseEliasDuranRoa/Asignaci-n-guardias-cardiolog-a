@@ -1095,6 +1095,34 @@
       </div>
     </div>
 
+    <!-- Regla: Viernes → Domingo -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">Quien hace el viernes hace el domingo</div>
+          <div class="rule-desc">En la auto-asignación, la persona que quede de guardia un viernes se asigna también automáticamente al domingo siguiente (mismo fin de semana).</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-viernesDomingo-activo" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Regla: Sábado bloquea lunes -->
+    <div class="rule-card">
+      <div class="rule-row">
+        <div class="rule-info">
+          <div class="rule-title">El sábado bloquea el lunes siguiente</div>
+          <div class="rule-desc">En la auto-asignación, quien tenga guardia un sábado no podrá ser asignado a la guardia del lunes siguiente.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="rg-sabadoBloqueaLunes-activo" onchange="saveReglas()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
     <!-- Regla: Sobrescribir -->
     <div class="rule-card">
       <div class="rule-row">
@@ -1233,6 +1261,8 @@ function defaultReglas() {
     dobleteFinde: { permitir: false, maxPorPersona: { activo: false, valor: 1 } },
     tripletes: { permitir: false },
     r1Acompanante: { activo: false },
+    viernesDomingo: { activo: true },
+    sabadoBloqueaLunes: { activo: true },
     sobrescribir: false
   };
 }
@@ -1247,6 +1277,8 @@ function loadState() {
       if (!d.ausencias) d.ausencias = [];
       if (!d.sinGuardia) d.sinGuardia = {};
       if (!d.reglas) d.reglas = defaultReglas();
+      if (d.reglas && !d.reglas.viernesDomingo) d.reglas.viernesDomingo = { activo: true };
+      if (d.reglas && !d.reglas.sabadoBloqueaLunes) d.reglas.sabadoBloqueaLunes = { activo: true };
       return d;
     }
     const v2 = localStorage.getItem('guardias_v2');
@@ -2258,6 +2290,8 @@ function renderReglas() {
   document.getElementById('rg-dobleteFinde-maxPP-activo').checked = R.dobleteFinde.maxPorPersona.activo;
   document.getElementById('rg-dobleteFinde-maxPP-valor').value = R.dobleteFinde.maxPorPersona.valor;
   document.getElementById('rg-tripletes-permitir').checked = R.tripletes.permitir;
+  document.getElementById('rg-viernesDomingo-activo').checked = R.viernesDomingo ? R.viernesDomingo.activo : false;
+  document.getElementById('rg-sabadoBloqueaLunes-activo').checked = R.sabadoBloqueaLunes ? R.sabadoBloqueaLunes.activo : false;
   document.getElementById('rg-sobrescribir').checked = R.sobrescribir;
   renderRotandoChecks();
   renderCustomMaxRows();
@@ -2284,6 +2318,10 @@ function saveReglas() {
   R.dobleteFinde.maxPorPersona.activo = document.getElementById('rg-dobleteFinde-maxPP-activo').checked;
   R.dobleteFinde.maxPorPersona.valor = parseInt(document.getElementById('rg-dobleteFinde-maxPP-valor').value) || 1;
   R.tripletes.permitir = document.getElementById('rg-tripletes-permitir').checked;
+  if (!R.viernesDomingo) R.viernesDomingo = { activo: true };
+  if (!R.sabadoBloqueaLunes) R.sabadoBloqueaLunes = { activo: true };
+  R.viernesDomingo.activo = document.getElementById('rg-viernesDomingo-activo').checked;
+  R.sabadoBloqueaLunes.activo = document.getElementById('rg-sabadoBloqueaLunes-activo').checked;
   R.sobrescribir = document.getElementById('rg-sobrescribir').checked;
   save();
   renderRotandoChecks();
@@ -2417,6 +2455,11 @@ function getElegiblesAuto(ds, tipo, isFinde, cntGuardias, cntFinde, yaEnOtroSlot
          state.asignaciones[prevDs + '_guardia2'] === r.id)) return false;
     if (tipo === 'busca' && state.asignaciones[prevDs + '_busca'] === r.id) return false;
 
+    // Sábado bloquea el lunes siguiente (para un lunes, prev2 es el sábado)
+    if (tipo === 'guardia' && R.sabadoBloqueaLunes && R.sabadoBloqueaLunes.activo && dt.getDay() === 1 &&
+        (state.asignaciones[prev2Ds + '_guardia'] === r.id ||
+         state.asignaciones[prev2Ds + '_guardia2'] === r.id)) return false;
+
     // Reglas de doblete/triplete solo aplican a guardias
     if (tipo === 'guardia') {
       const had2 = state.asignaciones[prev2Ds + '_guardia'] === r.id;
@@ -2530,6 +2573,9 @@ function autoAsignar() {
 
   let asignados = 0, sinElegibles = 0, omitidos = 0;
 
+  // Domingos ya cubiertos por la regla "viernes → domingo" (no reprocesar)
+  const lockedSundays = new Set();
+
   for (let d = 1; d <= daysInMonth; d++) {
     const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dow = new Date(y, m, d).getDay();
@@ -2539,6 +2585,7 @@ function autoAsignar() {
     for (const tipo of ['guardia']) {
       const key = ds + '_' + tipo;
 
+      if (lockedSundays.has(ds)) continue; // domingo ya emparejado con su viernes
       if (state.asignaciones[key] && !R.sobrescribir) { omitidos++; continue; }
 
       const yaEnOtroSlotId = null; // busca no se auto-asigna, no hay colisión
@@ -2561,6 +2608,7 @@ function autoAsignar() {
         const keyG2 = ds + '_guardia2';
         if (!state.asignaciones[keyG2] || R.sobrescribir) {
           const prevDsG2 = getDateStrFull(new Date(y, m, d - 1));
+          const prev2DsG2 = getDateStrFull(new Date(y, m, d - 2));
           const elegiblesG2 = state.residentes.filter(r => {
             if (r.anio === 'R1') return false;
             if (r.id === chosen.id) return false;
@@ -2570,6 +2618,10 @@ function autoAsignar() {
             // No consecutiva (guardia o guardia2 el día anterior)
             if (state.asignaciones[prevDsG2 + '_guardia'] === r.id ||
                 state.asignaciones[prevDsG2 + '_guardia2'] === r.id) return false;
+            // Sábado bloquea el lunes siguiente
+            if (R.sabadoBloqueaLunes && R.sabadoBloqueaLunes.activo && dow === 1 &&
+                (state.asignaciones[prev2DsG2 + '_guardia'] === r.id ||
+                 state.asignaciones[prev2DsG2 + '_guardia2'] === r.id)) return false;
             if (R.maxTotal.activo) {
               const max = R.maxTotal.tipo === 'custom' ? (R.maxTotal.custom[r.id] ?? R.maxTotal.valor) : R.maxTotal.valor;
               if ((cntGuardias[r.id] || 0) >= max) return false;
@@ -2585,6 +2637,30 @@ function autoAsignar() {
             if (isFinde) cntFinde[companion.id] = (cntFinde[companion.id] || 0) + 1;
           } else {
             sinElegibles++;
+          }
+        }
+      }
+
+      // Regla: quien hace el viernes hace el domingo siguiente (mismo fin de semana)
+      if (R.viernesDomingo && R.viernesDomingo.activo && dow === 5) {
+        const sunD = d + 2;
+        if (sunD <= daysInMonth) {
+          const sunDs = `${y}-${String(m+1).padStart(2,'0')}-${String(sunD).padStart(2,'0')}`;
+          const sunKey = sunDs + '_guardia';
+          if (!state.asignaciones[sunKey] || R.sobrescribir) {
+            state.asignaciones[sunKey] = chosen.id;
+            asignados++;
+            cntGuardias[chosen.id] = (cntGuardias[chosen.id] || 0) + 1;
+            cntFinde[chosen.id] = (cntFinde[chosen.id] || 0) + 1;
+            lockedSundays.add(sunDs);
+            // Replicar también el acompañante del viernes al domingo, si lo hay
+            const friG2 = state.asignaciones[ds + '_guardia2'];
+            if (friG2 && (!state.asignaciones[sunDs + '_guardia2'] || R.sobrescribir)) {
+              state.asignaciones[sunDs + '_guardia2'] = friG2;
+              asignados++;
+              cntGuardias[friG2] = (cntGuardias[friG2] || 0) + 1;
+              cntFinde[friG2] = (cntFinde[friG2] || 0) + 1;
+            }
           }
         }
       }
