@@ -1265,7 +1265,7 @@ function defaultReglas() {
     dobleteFinde: { permitir: false, maxPorPersona: { activo: false, valor: 1 } },
     tripletes: { permitir: false },
     r1Acompanante: { activo: false },
-    viernesDomingo: { activo: true },
+    viernesDomingo: { activo: false },
     sabadoBloqueaLunes: { activo: true },
     sobrescribir: true
   };
@@ -1281,7 +1281,7 @@ function loadState() {
       if (!d.ausencias) d.ausencias = [];
       if (!d.sinGuardia) d.sinGuardia = {};
       if (!d.reglas) d.reglas = defaultReglas();
-      if (d.reglas && !d.reglas.viernesDomingo) d.reglas.viernesDomingo = { activo: true };
+      if (d.reglas && !d.reglas.viernesDomingo) d.reglas.viernesDomingo = { activo: false };
       if (d.reglas && !d.reglas.sabadoBloqueaLunes) d.reglas.sabadoBloqueaLunes = { activo: true };
       return d;
     }
@@ -2363,7 +2363,7 @@ function saveReglas() {
   R.dobleteFinde.maxPorPersona.activo = document.getElementById('rg-dobleteFinde-maxPP-activo').checked;
   R.dobleteFinde.maxPorPersona.valor = parseInt(document.getElementById('rg-dobleteFinde-maxPP-valor').value) || 1;
   R.tripletes.permitir = document.getElementById('rg-tripletes-permitir').checked;
-  if (!R.viernesDomingo) R.viernesDomingo = { activo: true };
+  if (!R.viernesDomingo) R.viernesDomingo = { activo: false };
   if (!R.sabadoBloqueaLunes) R.sabadoBloqueaLunes = { activo: true };
   R.viernesDomingo.activo = document.getElementById('rg-viernesDomingo-activo').checked;
   R.sabadoBloqueaLunes.activo = document.getElementById('rg-sabadoBloqueaLunes-activo').checked;
