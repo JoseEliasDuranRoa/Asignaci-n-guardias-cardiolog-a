@@ -751,9 +751,13 @@
   .auth-btn:disabled { opacity: .6; cursor: default; }
   .auth-toggle { margin-top: 16px; text-align: center; font-size: 13px; color: #6b7280; }
   .auth-toggle a { color: #0d5b6f; font-weight: 600; cursor: pointer; text-decoration: none; }
-  .auth-guest { margin-top: 18px; padding-top: 14px; border-top: 1px solid #eceef0; text-align: center; }
-  .auth-guest a { font-size: 12px; color: #9aa3ad; cursor: pointer; text-decoration: none; }
-  .auth-guest a:hover { color: #6b7280; text-decoration: underline; }
+  .auth-guest { margin-top: 18px; padding-top: 16px; border-top: 1px solid #eceef0; text-align: center; }
+  .auth-guest a {
+    display: block; width: 100%; padding: 11px; border-radius: 8px;
+    background: #0e9f6e; color: white; font-size: 14px; font-weight: 600;
+    cursor: pointer; text-decoration: none; transition: background .15s;
+  }
+  .auth-guest a:hover { background: #0b815a; }
   .auth-userbar .guest-pill { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; background: #f0dcc4; color: #7a5526; }
   .auth-msg { margin-top: 14px; font-size: 13px; padding: 9px 12px; border-radius: 7px; display: none; }
   .auth-msg.err { display: block; background: #fde8e8; color: #9b1c1c; border: 1px solid #f8b4b4; }
