@@ -751,6 +751,10 @@
   .auth-btn:disabled { opacity: .6; cursor: default; }
   .auth-toggle { margin-top: 16px; text-align: center; font-size: 13px; color: #6b7280; }
   .auth-toggle a { color: #0d5b6f; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .auth-guest { margin-top: 18px; padding-top: 14px; border-top: 1px solid #eceef0; text-align: center; }
+  .auth-guest a { font-size: 12px; color: #9aa3ad; cursor: pointer; text-decoration: none; }
+  .auth-guest a:hover { color: #6b7280; text-decoration: underline; }
+  .auth-userbar .guest-pill { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; background: #f0dcc4; color: #7a5526; }
   .auth-msg { margin-top: 14px; font-size: 13px; padding: 9px 12px; border-radius: 7px; display: none; }
   .auth-msg.err { display: block; background: #fde8e8; color: #9b1c1c; border: 1px solid #f8b4b4; }
   .auth-msg.ok  { display: block; background: #def7ec; color: #03543f; border: 1px solid #84e1bc; }
@@ -794,6 +798,9 @@
     <button class="auth-btn" id="auth-btn" onclick="authSubmit()">Entrar</button>
     <div class="auth-toggle" id="auth-toggle">
       ¿No tienes cuenta? <a onclick="authToggleMode()">Crear Cuenta</a>
+    </div>
+    <div class="auth-guest">
+      <a onclick="authGuest()">Ver herramienta sin iniciar sesión</a>
     </div>
   </div>
 </div>
@@ -3337,15 +3344,36 @@ async function loadProfile() {
   currentProfile = error ? null : data;
 }
 
+function isGuest() { return sessionStorage.getItem('guestMode') === '1'; }
+
+function authGuest() {
+  sessionStorage.setItem('guestMode', '1');
+  document.getElementById('auth-overlay').classList.add('hidden');
+  renderUserBar();
+}
+
+function authExitGuest() {
+  sessionStorage.removeItem('guestMode');
+  location.reload();
+}
+
 function renderUserBar() {
   const bar = document.getElementById('auth-userbar');
-  if (!bar || !currentUser) { if (bar) bar.innerHTML = ''; return; }
-  const rol = currentProfile ? currentProfile.role : '—';
-  const nombre = (currentProfile && currentProfile.nombre) || currentUser.email;
-  bar.innerHTML =
-    `<span>${nombre}</span>` +
-    `<span class="role-pill ${rol === 'admin' ? 'admin' : ''}">${rol}</span>` +
-    `<button onclick="authLogout()">Salir</button>`;
+  if (!bar) return;
+  if (currentUser) {
+    const rol = currentProfile ? currentProfile.role : '—';
+    const nombre = (currentProfile && currentProfile.nombre) || currentUser.email;
+    bar.innerHTML =
+      `<span>${nombre}</span>` +
+      `<span class="role-pill ${rol === 'admin' ? 'admin' : ''}">${rol}</span>` +
+      `<button onclick="authLogout()">Salir</button>`;
+  } else if (isGuest()) {
+    bar.innerHTML =
+      `<span class="guest-pill">Invitado</span>` +
+      `<button onclick="authExitGuest()">Iniciar sesión</button>`;
+  } else {
+    bar.innerHTML = '';
+  }
 }
 
 async function showApp() {
@@ -3355,14 +3383,18 @@ async function showApp() {
 }
 
 function showLogin() {
+  if (isGuest()) {
+    document.getElementById('auth-overlay').classList.add('hidden');
+    renderUserBar();
+    return;
+  }
   document.getElementById('auth-overlay').classList.remove('hidden');
-  const ub = document.getElementById('auth-userbar');
-  if (ub) ub.innerHTML = '';
+  renderUserBar();
 }
 
 sbClient.auth.onAuthStateChange((event, session) => {
   currentUser = session ? session.user : null;
-  if (currentUser) showApp();
+  if (currentUser) { sessionStorage.removeItem('guestMode'); showApp(); }
   else showLogin();
 });
 
