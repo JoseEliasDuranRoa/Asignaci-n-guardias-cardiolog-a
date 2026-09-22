@@ -1414,6 +1414,13 @@ function getDateStrFull(dt) {
   return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 }
 
+// Mensaje cuando aún no hay residentes: la instrucción de añadirlos es solo para el admin
+function textoSinResidentes() {
+  if (typeof esAdmin === 'function' && esAdmin()) return 'No hay residentes. Añade el primero arriba.';
+  if (typeof nubeLista !== 'undefined' && !nubeLista) return 'Cargando…';
+  return 'Todavía no hay residentes. El administrador los añadirá.';
+}
+
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -1496,7 +1503,7 @@ function renderResidentes() {
   const tbody = document.getElementById('tbody-residentes');
   tbody.innerHTML = '';
   if (state.residentes.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">No hay residentes. Añade el primero arriba.</td></tr>';
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">${textoSinResidentes()}</td></tr>`;
     return;
   }
   state.residentes.forEach((r, i) => {
@@ -1660,7 +1667,7 @@ function getFestivosMadrid(year) {
 }
 
 function buildSolGrid(dias, storeObj, toggleFn, conflictClass, badgeId, cellClass) {
-  if (state.residentes.length === 0) return '<p class="text-muted">Añade residentes primero.</p>';
+  if (state.residentes.length === 0) return `<p class="text-muted">${textoSinResidentes()}</p>`;
   const threshold = Math.max(2, Math.ceil(state.residentes.length / 3));
   const conflictCount = {};
   dias.forEach(({ds}) => {
@@ -2084,7 +2091,7 @@ function renderStats() {
   const content = document.getElementById('stats-content');
 
   if (state.residentes.length === 0) {
-    content.innerHTML = '<p class="text-muted">Añade residentes primero.</p>';
+    content.innerHTML = `<p class="text-muted">${textoSinResidentes()}</p>`;
     return;
   }
 
@@ -3152,7 +3159,7 @@ function renderSolicitudesMobile() {
 
 function buildSolMobile(dias, store, toggleFn, cellMark) {
   if (state.residentes.length === 0)
-    return '<p class="text-muted" style="padding:6px 2px">Añade residentes primero.</p>';
+    return `<p class="text-muted" style="padding:6px 2px">${textoSinResidentes()}</p>`;
   const DOW_LETTERS = ['D','L','M','X','J','V','S'];
   const festivos = new Set();
   const aniosVistos = new Set();
@@ -3205,7 +3212,7 @@ function renderResidentesMobile() {
   const list = document.getElementById('res-card-list');
   if (!list) return;
   if (state.residentes.length === 0) {
-    list.innerHTML = '<p class="text-muted" style="padding:6px 2px;text-align:center">No hay residentes. Añade el primero arriba.</p>';
+    list.innerHTML = `<p class="text-muted" style="padding:6px 2px;text-align:center">${textoSinResidentes()}</p>`;
     return;
   }
   list.innerHTML = state.residentes.map((r, i) => {
