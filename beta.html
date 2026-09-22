@@ -3263,6 +3263,422 @@ window.addEventListener('popstate', function() {
 });
 </script>
 
+<style>
+  /* Permisos: lo que solo ve el admin */
+  body:not(.rol-admin) .solo-admin,
+  body:not(.rol-admin) #tab-residentes > .card:first-child,
+  body:not(.rol-admin) [onclick^="deleteResidente"],
+  body:not(.rol-admin) [onclick^="openModalRota"],
+  body:not(.rol-admin) [onclick="autoAsignar()"],
+  body:not(.rol-admin) [onclick="borrarMes()"],
+  body:not(.rol-admin) [onclick="borrarSolicitudesMes()"],
+  body:not(.rol-admin) [onclick="borrarBuscaMes()"],
+  body:not(.rol-admin) [onclick="asignarBuscaAGuardia()"],
+  body:not(.rol-admin) .header-btn:has(input[onchange^="importarDatos"]),
+  body:not(.rol-admin) nav button[onclick*="'reglas'"],
+  body:not(.rol-admin) .bottom-nav button[data-tab="reglas"],
+  [onclick="borrarTodo()"] { display: none !important; }
+
+  #nube-aviso {
+    position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%);
+    z-index: 3000; max-width: calc(100% - 32px);
+    background: #1f2d3d; color: white; font-size: 13px; line-height: 1.4;
+    padding: 10px 16px; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.18);
+    opacity: 0; pointer-events: none; transition: opacity .2s;
+  }
+  #nube-aviso.visible { opacity: 1; }
+  #nube-aviso.err { background: var(--danger); }
+  #nube-aviso.ok  { background: var(--success); }
+  .nube-cuentas-tabla select { font-size: 13px; }
+</style>
+
+<script>
+// =============================================
+// NUBE: datos compartidos en Supabase + permisos por rol
+// =============================================
+// Los datos viven en Supabase. localStorage 'guardias_v3' es de index.html
+// (mismo dominio): aquí nunca se escribe, solo se lee para migrarlo.
+const NUBE_LOCAL = (() => {
+  try { const d = JSON.parse(localStorage.getItem('guardias_v3')); return d && d.residentes && d.residentes.length ? d : null; }
+  catch(e) { return null; }
+})();
+
+let nubeLista = false;          // datos de la nube cargados
+let nubeFotoSync = null;        // última versión sincronizada: { tabla: Map(clave → JSON) }
+let nubeCola = Promise.resolve();
+let nubeTimer = null;
+let nubePendiente = false;
+let nubePerfiles = [];
+
+function estadoVacio() {
+  let ui = {};
+  try { ui = JSON.parse(localStorage.getItem('guardias_beta_ui')) || {}; } catch(e) {}
+  const now = new Date();
+  return {
+    residentes: [], asignaciones: {}, solicitudes: {}, sinGuardia: {}, ausencias: [], meses: [],
+    reglas: defaultReglas(),
+    calMes: ui.calMes ?? now.getMonth(), calAnio: ui.calAnio ?? now.getFullYear()
+  };
+}
+
+// No mostrar los datos locales mientras se carga la nube
+state = estadoVacio();
+renderResidentes();
+
+// ---------- Roles ----------
+function rol() {
+  if (currentUser && currentProfile) return currentProfile.role === 'admin' ? 'admin' : 'residente';
+  return 'invitado';
+}
+function esAdmin() { return nubeLista && rol() === 'admin'; }
+function miResidenteId() { return currentProfile ? currentProfile.residente_id : null; }
+function mesCerrado(ds) {
+  return (state.meses || []).some(m => m.cerrado && ds.startsWith(`${m.anio}-${String(m.mes).padStart(2,'0')}`));
+}
+function puedeEditarResidente(resId) {
+  return nubeLista && (esAdmin() || (rol() === 'residente' && !!resId && resId === miResidenteId()));
+}
+function motivoNoPermitido() {
+  if (!nubeLista) return 'Cargando datos… espera un momento.';
+  if (rol() === 'invitado') return 'Inicia sesión para editar.';
+  if (rol() === 'residente' && !miResidenteId()) return 'Tu cuenta aún no está vinculada a un residente. Pídeselo al administrador.';
+  return 'Solo puedes modificar tus propias solicitudes y bajas.';
+}
+
+function nubeAplicarRol() {
+  const r = rol();
+  document.body.classList.toggle('rol-admin', r === 'admin');
+  document.body.classList.toggle('rol-residente', r === 'residente');
+  document.body.classList.toggle('rol-invitado', r === 'invitado');
+}
+
+function nubeAviso(msg, tipo) {
+  let el = document.getElementById('nube-aviso');
+  if (!el) { el = document.createElement('div'); el.id = 'nube-aviso'; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.className = 'visible ' + (tipo || '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ''; }, tipo === 'err' ? 5000 : 2500);
+}
+
+// ---------- Conversión estado ↔ filas ----------
+function anioANum(a) { const n = parseInt(String(a || '').replace(/\D/g, '')); return isNaN(n) ? null : n; }
+
+function estadoAFilas(s) {
+  const ids = new Set(s.residentes.map(r => r.id));
+  const f = { residentes: new Map(), asignaciones: new Map(), solicitudes: new Map(), ausencias: new Map(), config: new Map() };
+  s.residentes.forEach((r, i) => {
+    const { id, nombre, anio, colorIdx, ...extra } = r;
+    f.residentes.set(id, { id, nombre, anio: anioANum(anio), color_idx: colorIdx ?? i, extra });
+  });
+  for (const [k, v] of Object.entries(s.asignaciones || {})) {
+    if (v && ids.has(v)) f.asignaciones.set(k, { fecha: k.slice(0, 10), tipo: k.slice(11), residente_id: v });
+  }
+  const sol = (obj, tipo) => {
+    for (const k of Object.keys(obj || {})) {
+      const rid = k.slice(11);
+      if (obj[k] && ids.has(rid)) f.solicitudes.set(k + '|' + tipo, { fecha: k.slice(0, 10), residente_id: rid, tipo });
+    }
+  };
+  sol(s.solicitudes, 'libre');
+  sol(s.sinGuardia, 'sin_guardia');
+  (s.ausencias || []).forEach(a => {
+    if (ids.has(a.resId)) f.ausencias.set(a.id, { id: a.id, residente_id: a.resId, tipo: a.tipo, motivo: a.motivo || null, inicio: a.inicio, fin: a.fin });
+  });
+  f.config.set('1', { id: 1, reglas: s.reglas });
+  return f;
+}
+
+function filasAEstado(db) {
+  const s = estadoVacio();
+  s.calMes = state.calMes; s.calAnio = state.calAnio;
+  db.residentes
+    .sort((a, b) => (a.color_idx ?? 0) - (b.color_idx ?? 0) || a.nombre.localeCompare(b.nombre))
+    .forEach(r => s.residentes.push({ id: r.id, nombre: r.nombre, anio: 'R' + (r.anio || 1), colorIdx: r.color_idx, ...(r.extra || {}) }));
+  db.asignaciones.forEach(a => { s.asignaciones[a.fecha + '_' + a.tipo] = a.residente_id; });
+  db.solicitudes.forEach(x => { (x.tipo === 'libre' ? s.solicitudes : s.sinGuardia)[x.fecha + '_' + x.residente_id] = true; });
+  s.ausencias = db.ausencias.map(a => ({ id: a.id, resId: a.residente_id, tipo: a.tipo, motivo: a.motivo || '', inicio: a.inicio, fin: a.fin }));
+  const reglas = db.config[0] && db.config[0].reglas;
+  if (reglas && Object.keys(reglas).length) s.reglas = Object.assign(defaultReglas(), reglas);
+  s.meses = db.meses;
+  return s;
+}
+
+function foto(filas) {
+  const o = {};
+  for (const t in filas) { o[t] = new Map(); filas[t].forEach((v, k) => o[t].set(k, JSON.stringify(v))); }
+  return o;
+}
+
+// ---------- Leer ----------
+async function nubeLeerTabla(tabla, orden) {
+  const out = [];
+  for (let desde = 0; ; desde += 1000) {
+    let q = sbClient.from(tabla).select('*');
+    orden.forEach(c => { q = q.order(c); });
+    const { data, error } = await q.range(desde, desde + 999);
+    if (error) throw error;
+    out.push(...data);
+    if (data.length < 1000) return out;
+  }
+}
+
+async function nubeCargar() {
+  const [residentes, asignaciones, solicitudes, ausencias, config, meses] = await Promise.all([
+    nubeLeerTabla('residentes', ['id']),
+    nubeLeerTabla('asignaciones', ['fecha', 'tipo']),
+    nubeLeerTabla('solicitudes', ['fecha', 'residente_id', 'tipo']),
+    nubeLeerTabla('ausencias', ['id']),
+    nubeLeerTabla('config', ['id']),
+    nubeLeerTabla('meses', ['anio', 'mes']),
+  ]);
+  state = filasAEstado({ residentes, asignaciones, solicitudes, ausencias, config, meses });
+  nubeFotoSync = foto(estadoAFilas(state));
+  nubeLista = true;
+  if (rol() === 'admin') await nubeCargarPerfiles();
+}
+
+function nubeRepintar() {
+  const activo = document.querySelector('.tab-content.active');
+  const name = activo ? activo.id.replace('tab-', '') : 'residentes';
+  const btn = [...document.querySelectorAll('header + nav button')]
+    .find(b => (b.getAttribute('onclick') || '').includes("'" + name + "'"));
+  showTab(name, btn || null);
+  if (currentAusResId && document.getElementById('modal-aus').classList.contains('open')) renderAusLista();
+}
+
+async function nubeRecargar() {
+  try { await nubeCargar(); nubeRepintar(); }
+  catch (e) { nubeAviso('No se pudieron cargar los datos: ' + (e.message || e), 'err'); }
+}
+
+// ---------- Escribir (se suben solo las diferencias) ----------
+async function nubeUpsert(tabla, filas) {
+  for (let i = 0; i < filas.length; i += 500) {
+    const { error } = await sbClient.from(tabla).upsert(filas.slice(i, i + 500));
+    if (error) throw error;
+  }
+}
+
+// Borra filas agrupando por columnas fijas + lista IN. Devuelve true si alguna no se borró.
+async function nubeBorrar(tabla, filas, fijas, colIn) {
+  const grupos = new Map();
+  filas.forEach(f => {
+    const g = JSON.stringify(fijas.map(c => f[c]));
+    if (!grupos.has(g)) grupos.set(g, []);
+    grupos.get(g).push(f[colIn]);
+  });
+  let faltan = false;
+  for (const [g, vals] of grupos) {
+    const gv = JSON.parse(g);
+    for (let i = 0; i < vals.length; i += 200) {
+      const lote = vals.slice(i, i + 200);
+      let q = sbClient.from(tabla).delete();
+      fijas.forEach((c, j) => { q = q.eq(c, gv[j]); });
+      const { data, error } = await q.in(colIn, lote).select(colIn);
+      if (error) throw error;
+      if (data.length < lote.length) faltan = true;
+    }
+  }
+  return faltan;
+}
+
+async function nubeSubir() {
+  nubePendiente = false;
+  const actual = estadoAFilas(state);
+  const nueva = foto(actual);
+  const cambiadas = t => [...actual[t].entries()].filter(([k]) => nubeFotoSync[t].get(k) !== nueva[t].get(k)).map(([, v]) => v);
+  const quitadas = t => [...nubeFotoSync[t].entries()].filter(([k]) => !actual[t].has(k)).map(([, v]) => JSON.parse(v));
+  try {
+    let recargar = false;
+    await nubeUpsert('residentes', cambiadas('residentes'));
+    recargar = await nubeBorrar('asignaciones', quitadas('asignaciones'), ['tipo'], 'fecha') || recargar;
+    recargar = await nubeBorrar('solicitudes', quitadas('solicitudes'), ['residente_id', 'tipo'], 'fecha') || recargar;
+    recargar = await nubeBorrar('ausencias', quitadas('ausencias'), [], 'id') || recargar;
+    await nubeUpsert('asignaciones', cambiadas('asignaciones'));
+    await nubeUpsert('solicitudes', cambiadas('solicitudes'));
+    await nubeUpsert('ausencias', cambiadas('ausencias'));
+    const cfg = cambiadas('config');
+    if (cfg.length) {
+      const { error } = await sbClient.from('config').update({ reglas: cfg[0].reglas }).eq('id', 1);
+      if (error) throw error;
+    }
+    recargar = await nubeBorrar('residentes', quitadas('residentes'), [], 'id') || recargar;
+    nubeFotoSync = nueva;
+    if (recargar) await nubeRecargar();
+  } catch (e) {
+    const m = e.message || String(e);
+    nubeAviso(/row-level security|permission/i.test(m)
+      ? 'No se guardó: no tienes permiso (o el mes está cerrado).'
+      : 'No se pudo guardar: ' + m, 'err');
+    await nubeRecargar();
+  }
+}
+
+function nubeEncolar(fn) {
+  nubeCola = nubeCola.then(fn).catch(e => console.error(e));
+  return nubeCola;
+}
+
+// save() original escribía en localStorage: ahora sube a la nube
+window.save = function() {
+  try { localStorage.setItem('guardias_beta_ui', JSON.stringify({ calMes: state.calMes, calAnio: state.calAnio })); } catch(e) {}
+  if (!nubeLista || rol() === 'invitado') return;
+  nubePendiente = true;
+  clearTimeout(nubeTimer);
+  nubeTimer = setTimeout(() => nubeEncolar(nubeSubir), 300);
+};
+
+// Al volver a la pestaña, traer cambios de otros
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && nubeLista && !nubePendiente) nubeEncolar(nubeRecargar);
+});
+
+// ---------- Guardas de permisos ----------
+function nubeGuarda(nombre, permitido, mensaje) {
+  const original = window[nombre];
+  if (typeof original !== 'function') return;
+  window[nombre] = function(...args) {
+    if (!permitido(...args)) { nubeAviso(typeof mensaje === 'function' ? mensaje() : mensaje, 'err'); return; }
+    return original.apply(this, args);
+  };
+}
+
+['addResidente', 'deleteResidente', 'openModalRota', 'saveRota', 'clearRota',
+ 'openModal', 'saveAsig', 'clearAsig', 'autoAsignar', 'borrarMes', 'borrarSolicitudesMes',
+ 'borrarBuscaMes', 'asignarBuscaAGuardia', 'saveReglas', 'importarDatos', 'borrarTodo']
+  .forEach(n => nubeGuarda(n, () => esAdmin(), () => nubeLista && rol() !== 'invitado'
+    ? 'Solo el administrador puede hacer esto.' : motivoNoPermitido()));
+
+const puedeSolicitud = key => puedeEditarResidente(key.slice(11)) && (esAdmin() || !mesCerrado(key.slice(0, 10)));
+['toggleSolicitud', 'toggleSinGuardia', 'toggleSolicitudMobile', 'toggleSinGuardiaMobile']
+  .forEach(n => nubeGuarda(n, puedeSolicitud, motivoNoPermitido));
+
+nubeGuarda('addAusencia', () => puedeEditarResidente(currentAusResId), motivoNoPermitido);
+nubeGuarda('deleteAusencia', id => {
+  const a = state.ausencias.find(x => x.id === id);
+  return a && puedeEditarResidente(a.resId);
+}, motivoNoPermitido);
+
+// En el modal de bajas, ocultar el formulario y los botones si no es tuyo
+(function() {
+  const original = window.renderAusLista;
+  window.renderAusLista = function() {
+    original();
+    const puede = puedeEditarResidente(currentAusResId);
+    document.getElementById('aus-add-form').style.display = puede ? '' : 'none';
+    document.querySelectorAll('#modal-aus-lista .btn-danger').forEach(b => { b.style.display = puede ? '' : 'none'; });
+  };
+})();
+
+// ---------- Admin: vincular cuentas con residentes ----------
+async function nubeCargarPerfiles() {
+  const { data, error } = await sbClient.from('profiles').select('*').order('nombre');
+  nubePerfiles = error ? [] : data;
+}
+
+function renderCuentas() {
+  let card = document.getElementById('nube-cuentas-card');
+  if (!card) {
+    card = document.createElement('div');
+    card.className = 'card solo-admin';
+    card.id = 'nube-cuentas-card';
+    document.getElementById('tab-residentes').appendChild(card);
+  }
+  if (!esAdmin()) { card.innerHTML = ''; return; }
+  const opcionesRes = sel => '<option value="">— Sin vincular —</option>' + state.residentes
+    .map(r => `<option value="${r.id}" ${r.id === sel ? 'selected' : ''}>${esc(r.nombre)} (${r.anio})</option>`).join('');
+  const filas = nubePerfiles.map(p => `
+    <tr>
+      <td style="font-weight:600">${esc(p.nombre || '—')}${p.id === currentUser.id ? ' <span style="color:var(--text-muted);font-weight:400">(tú)</span>' : ''}</td>
+      <td style="color:var(--text-muted);font-size:12px">${esc(p.email || '')}</td>
+      <td><select onchange="nubeActualizarPerfil('${p.id}', { residente_id: this.value || null })">${opcionesRes(p.residente_id)}</select></td>
+      <td><select onchange="nubeActualizarPerfil('${p.id}', { role: this.value })">
+        <option value="residente" ${p.role !== 'admin' ? 'selected' : ''}>Residente</option>
+        <option value="admin" ${p.role === 'admin' ? 'selected' : ''}>Admin</option>
+      </select></td>
+    </tr>`).join('');
+  card.innerHTML = `
+    <div class="card-title">Cuentas de usuario</div>
+    <div class="alert alert-info" style="margin-bottom:12px">Cada residente crea su cuenta en la pantalla de inicio. Luego aquí la vinculas con su nombre: a partir de ese momento podrá editar sus solicitudes y bajas.</div>
+    <div style="overflow-x:auto">
+      <table class="nube-cuentas-tabla">
+        <thead><tr><th>Nombre</th><th>Email</th><th>Residente</th><th>Rol</th></tr></thead>
+        <tbody>${filas || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:18px">Todavía no hay cuentas.</td></tr>'}</tbody>
+      </table>
+    </div>`;
+}
+
+async function nubeActualizarPerfil(id, cambios) {
+  if (!esAdmin()) return;
+  if (id === currentUser.id && cambios.role === 'residente' &&
+      !confirm('Vas a quitarte a ti mismo el rol de administrador. ¿Seguro?')) { renderCuentas(); return; }
+  const { error } = await sbClient.from('profiles').update(cambios).eq('id', id);
+  if (error) nubeAviso('No se pudo guardar: ' + error.message, 'err');
+  else nubeAviso('Guardado ✓', 'ok');
+  await nubeCargarPerfiles();
+  if (id === currentUser.id) { await loadProfile(); nubeAplicarRol(); renderUserBar(); }
+  renderCuentas();
+}
+
+(function() {
+  const original = window.renderResidentes;
+  window.renderResidentes = function() { original(); renderCuentas(); };
+})();
+
+// ---------- Admin: subir los datos guardados en este navegador ----------
+function renderBotonMigrar() {
+  let btn = document.getElementById('nube-migrar');
+  const mostrar = NUBE_LOCAL && esAdmin();
+  if (!mostrar) { if (btn) btn.remove(); return; }
+  if (btn) return;
+  btn = document.createElement('button');
+  btn.id = 'nube-migrar';
+  btn.className = 'header-btn solo-admin';
+  btn.title = 'Subir a la base de datos lo que tienes guardado en este navegador';
+  btn.textContent = '⬆ Subir datos de este navegador';
+  btn.onclick = nubeMigrarLocal;
+  document.querySelector('.header-actions').prepend(btn);
+}
+
+async function nubeMigrarLocal() {
+  if (!esAdmin() || !NUBE_LOCAL) return;
+  const d = JSON.parse(JSON.stringify(NUBE_LOCAL));
+  const n = (o) => Object.keys(o || {}).length;
+  const aviso = state.residentes.length
+    ? '\n\n⚠️ Ya hay datos en la base de datos: se REEMPLAZARÁN por los de este navegador.'
+    : '';
+  if (!confirm(`Se subirán a la base de datos los datos guardados en este navegador:\n\n` +
+    `· ${d.residentes.length} residentes\n· ${n(d.asignaciones)} guardias / busca\n` +
+    `· ${n(d.solicitudes) + n(d.sinGuardia)} solicitudes\n· ${(d.ausencias || []).length} bajas` + aviso + '\n\n¿Continuar?')) return;
+  state = Object.assign(estadoVacio(), d, {
+    reglas: Object.assign(defaultReglas(), d.reglas || {}),
+    calMes: state.calMes, calAnio: state.calAnio, meses: state.meses
+  });
+  nubeAviso('Subiendo datos…');
+  clearTimeout(nubeTimer);
+  await nubeEncolar(nubeSubir);
+  await nubeEncolar(nubeRecargar);
+  nubeAviso('✅ Datos subidos a la base de datos', 'ok');
+}
+
+// ---------- Arranque (lo llama la autenticación) ----------
+function nubeIniciar() { return nubeEncolar(nubeIniciarAhora); }
+
+async function nubeIniciarAhora() {
+  nubeAplicarRol();
+  try {
+    await nubeCargar();
+  } catch (e) {
+    nubeAviso('No se pudieron cargar los datos: ' + (e.message || e), 'err');
+    return;
+  }
+  nubeRepintar();
+  renderBotonMigrar();
+  if (rol() === 'residente' && !miResidenteId()) nubeAviso(motivoNoPermitido());
+}
+</script>
+
 <script>
 // =============================================
 // AUTENTICACIÓN (Supabase)
@@ -3354,6 +3770,7 @@ function authGuest() {
   sessionStorage.setItem('guestMode', '1');
   document.getElementById('auth-overlay').classList.add('hidden');
   renderUserBar();
+  nubeIniciar();
 }
 
 function authExitGuest() {
@@ -3384,12 +3801,14 @@ async function showApp() {
   await loadProfile();
   renderUserBar();
   document.getElementById('auth-overlay').classList.add('hidden');
+  await nubeIniciar();
 }
 
 function showLogin() {
   if (isGuest()) {
     document.getElementById('auth-overlay').classList.add('hidden');
     renderUserBar();
+    if (!nubeLista) nubeIniciar();
     return;
   }
   document.getElementById('auth-overlay').classList.remove('hidden');
