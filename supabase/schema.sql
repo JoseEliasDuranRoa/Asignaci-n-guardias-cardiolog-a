@@ -121,7 +121,10 @@ $$;
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  insert into profiles (id, nombre, email) values (new.id, new.raw_user_meta_data->>'nombre', new.email)
+  -- La primera cuenta registrada es admin; el resto, residentes
+  insert into profiles (id, nombre, email, role)
+  values (new.id, new.raw_user_meta_data->>'nombre', new.email,
+          case when exists (select 1 from profiles where role = 'admin') then 'residente' else 'admin' end)
   on conflict (id) do nothing;
   return new;
 end;
