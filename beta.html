@@ -8,8 +8,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Guardias">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230d5b6f'/%3E%3Cpath d='M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z' fill='white' transform='scale(0.7) translate(5.1 5.1)'/%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230d5b6f'/%3E%3Cpath d='M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z' fill='white' transform='scale(0.7) translate(5.1 5.1)'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="cardio-icon.png">
+<link rel="apple-touch-icon" href="cardio-icon.png">
 <title>Guardias · Sistema de gestión</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,7 +71,7 @@
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 1px 2px rgba(13,91,111,.3), inset 0 1px 0 rgba(255,255,255,.12);
   }
-  .brand-mark svg { width: 18px; height: 18px; }
+  .brand-mark img { width: 26px; height: 26px; display: block; }
   .brand-text { display: flex; flex-direction: column; line-height: 1.1; }
   .brand-text .name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
   .brand-text .tag { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-top: 2px; letter-spacing: 0.02em; text-transform: uppercase; }
@@ -507,7 +507,7 @@
       flex-wrap: wrap;
     }
     .brand-mark { width: 32px; height: 32px; }
-    .brand-mark svg { width: 16px; height: 16px; }
+    .brand-mark img { width: 23px; height: 23px; }
     .brand-text .name { font-size: 14px; }
     .brand-text .tag { display: none; }
     .header-divider { display: none; }
@@ -733,7 +733,7 @@
     display: flex; align-items: center; justify-content: center;
     box-shadow: 0 1px 3px rgba(13,91,111,.35), inset 0 1px 0 rgba(255,255,255,.15);
   }
-  .auth-mark svg { width: 20px; height: 20px; }
+  .auth-mark img { width: 28px; height: 28px; display: block; }
   .auth-card h1 { font-size: 22px; font-weight: 700; color: #0f1c2e; margin: 0; }
   .auth-card .auth-sub { font-size: 13px; color: #6b7280; margin-bottom: 22px; }
   .auth-card label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin: 12px 0 5px; }
@@ -783,9 +783,7 @@
   <div class="auth-card">
     <div class="auth-brand">
       <div class="auth-mark" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z" fill="white"></path>
-        </svg>
+        <img src="cardio.png" alt="">
       </div>
       <h1>Guardias</h1>
     </div>
@@ -812,9 +810,7 @@
 <header>
   <div class="brand">
     <div class="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z" fill="white"></path>
-      </svg>
+      <img src="cardio.png" alt="">
     </div>
     <div class="brand-text">
       <span class="name">Guardias</span>
@@ -2892,12 +2888,12 @@ function imprimirCuadrante({ titulo, tipos, pieLeyenda }) {
     .btn-print:hover{background:#0a4a5b}
     .brand{display:flex;align-items:center;gap:10px}
     .brand-mark{width:28px;height:28px;border-radius:7px;background:linear-gradient(180deg,#0d5b6f,#0a4a5b);display:flex;align-items:center;justify-content:center}
-    .brand-mark svg{width:14px;height:14px}
+    .brand-mark img{width:20px;height:20px}
     @media print{@page{size:A4 landscape;margin:10mm} .no-print{display:none}}
   </style></head><body>
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
     <div class="brand">
-      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z" fill="white"/></svg></div>
+      <div class="brand-mark"><img src="${new URL('cardio.png', location.href).href}" alt=""></div>
       <div>
         <h1>${titulo} — ${months[m]} ${y}</h1>
         <p class="sub">${new Date().toLocaleDateString('es-ES', {day:'numeric',month:'long',year:'numeric'})}</p>
@@ -3597,7 +3593,9 @@ function renderCuentas() {
     .map(r => `<option value="${r.id}" ${r.id === sel ? 'selected' : ''}>${esc(r.nombre)} (${r.anio})</option>`).join('');
   const filas = nubePerfiles.map(p => `
     <tr>
-      <td style="font-weight:600">${esc(p.nombre || '—')}${p.id === currentUser.id ? ' <span style="color:var(--text-muted);font-weight:400">(tú)</span>' : ''}</td>
+      <td style="font-weight:600;white-space:nowrap"><input type="text" value="${esc(p.nombre || '')}" placeholder="Nombre" style="width:170px;font-weight:600"
+          onkeydown="if(event.key==='Enter')this.blur()"
+          onchange="nubeActualizarPerfil('${p.id}', { nombre: this.value.trim() || null })">${p.id === currentUser.id ? ' <span style="color:var(--text-muted);font-weight:400">(tú)</span>' : ''}</td>
       <td style="color:var(--text-muted);font-size:12px">${esc(p.email || '')}</td>
       <td><select onchange="nubeActualizarPerfil('${p.id}', { residente_id: this.value || null })">${opcionesRes(p.residente_id)}</select></td>
       <td><select onchange="nubeActualizarPerfil('${p.id}', { role: this.value })">
