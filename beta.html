@@ -1015,12 +1015,16 @@
       Exportar PDF
     </button></div>
     <div class="mes-selector no-print">
-      <label style="font-weight:600">Período:</label>
+      <label style="font-weight:600">Ver:</label>
       <select id="stats-periodo" onchange="renderStats()">
-        <option value="mes">Mes seleccionado</option>
+        <option value="mes">Por mes</option>
+        <option value="anio">Por año</option>
+        <option value="residente">Por residente</option>
         <option value="total">Todo el historial</option>
       </select>
       <select id="stats-mes-sel" onchange="renderStats()"></select>
+      <select id="stats-anio-sel" onchange="renderStats()" style="display:none"></select>
+      <select id="stats-res-sel" onchange="renderStats()" style="display:none"></select>
     </div>
     <div id="stats-content"></div>
   </div>
@@ -2080,23 +2084,61 @@ document.getElementById('modal-aus').addEventListener('click', function(e) { if 
 // =============================================
 // ESTADÍSTICAS
 // =============================================
+const MESES_STATS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function rellenarStatsAnios() {
+  const sel = document.getElementById('stats-anio-sel');
+  const anios = new Set([state.calAnio]);
+  Object.keys(state.asignaciones).forEach(k => anios.add(Number(k.slice(0, 4))));
+  state.ausencias.forEach(a => { anios.add(Number(a.inicio.slice(0, 4))); anios.add(Number(a.fin.slice(0, 4))); });
+  const previo = sel.value || String(state.calAnio);
+  sel.innerHTML = [...anios].filter(Boolean).sort((a, b) => b - a)
+    .map(y => `<option value="${y}" ${String(y) === previo ? 'selected' : ''}>${y}</option>`).join('');
+}
+
+function rellenarStatsResidentes() {
+  const sel = document.getElementById('stats-res-sel');
+  let previo = sel.value;
+  if (!previo && typeof miResidenteId === 'function') previo = miResidenteId() || '';
+  const lista = [...state.residentes].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  if (!lista.some(r => r.id === previo)) previo = lista.length ? lista[0].id : '';
+  sel.innerHTML = lista.map(r => `<option value="${r.id}" ${r.id === previo ? 'selected' : ''}>${esc(r.nombre)}</option>`).join('');
+}
+
 function renderStats() {
   const periodo = document.getElementById('stats-periodo').value;
   const mesSel = document.getElementById('stats-mes-sel').value;
   const [sy, sm] = mesSel ? mesSel.split('-').map(Number) : [state.calAnio, state.calMes + 1];
   const content = document.getElementById('stats-content');
+  document.getElementById('stats-mes-sel').style.display = periodo === 'mes' ? '' : 'none';
+  document.getElementById('stats-anio-sel').style.display = periodo === 'anio' ? '' : 'none';
+  document.getElementById('stats-res-sel').style.display = periodo === 'residente' ? '' : 'none';
 
   if (state.residentes.length === 0) {
     content.innerHTML = `<p class="text-muted">${textoSinResidentes()}</p>`;
     return;
   }
 
+  if (periodo === 'residente') {
+    rellenarStatsResidentes();
+    content.innerHTML = htmlStatsResidente(document.getElementById('stats-res-sel').value);
+    return;
+  }
+  if (periodo === 'anio') rellenarStatsAnios();
+  const anioSel = Number(document.getElementById('stats-anio-sel').value) || state.calAnio;
+
   function relevante(dateStr) {
     if (periodo === 'total') return true;
     const [ky, km] = dateStr.split('-').map(Number);
+    if (periodo === 'anio') return ky === anioSel;
     return ky === sy && km === sm;
   }
 
+  renderStatsGeneral(content, calcStats(relevante));
+}
+
+// Cuenta guardias, buscas, dobletes y ausencias por residente en las fechas que cumplan `relevante`
+function calcStats(relevante) {
   const statsMap = {};
   state.residentes.forEach(r => {
     statsMap[r.id] = {
@@ -2158,7 +2200,10 @@ function renderStats() {
       }
     }
   }
+  return statsMap;
+}
 
+function renderStatsGeneral(content, statsMap) {
   const arr = Object.values(statsMap);
   const totalGuardias = arr.reduce((a,b) => a + b.guardias, 0);
   const totalBuscas = arr.reduce((a,b) => a + b.buscas, 0);
@@ -2216,62 +2261,6 @@ function renderStats() {
 
   html += `</tbody></table></div>`;
 
-  const porAnio = {};
-  arr.forEach(s => {
-    if (!porAnio[s.anio]) porAnio[s.anio] = { guardias:0, buscas:0, finde:0, dobLab:0, dobFinde:0, ausTotal:0, ausMaster:0, ausCurso:0, ausCongreso:0, ausOtro:0, n:0 };
-    const pa = porAnio[s.anio];
-    pa.guardias += s.guardias; pa.buscas += s.buscas; pa.finde += s.guardiasFinde;
-    pa.dobLab += s.dobletesLab; pa.dobFinde += s.dobleteFinde;
-    pa.ausTotal += s.ausencias.total; pa.ausMaster += s.ausencias.master;
-    pa.ausCurso += s.ausencias.curso; pa.ausCongreso += s.ausencias.congreso;
-    pa.ausOtro += s.ausencias.otro; pa.n++;
-  });
-
-  html += `<div class="section-title">Por año de residencia</div>
-  <div class="stats-tabla-wrapper">
-  <table>
-    <thead>
-      <tr>
-        <th>Año</th>
-        <th style="text-align:center">Nº residentes</th>
-        <th style="text-align:center">Media guardias</th>
-        <th style="text-align:center">Media finde</th>
-        <th style="text-align:center">Media buscas</th>
-        <th style="text-align:center">Dobl. lab</th>
-        <th style="text-align:center">Dobl. finde</th>
-      </tr>
-    </thead>
-    <tbody>`;
-
-  ['R1','R2','R3','R4','R5'].forEach(a => {
-    if (!porAnio[a]) return;
-    const pa = porAnio[a];
-    const n = pa.n;
-    html += `<tr class="anio-row">
-      <td><span class="badge badge-${a.toLowerCase()}">${a}</span></td>
-      <td style="text-align:center">${n}</td>
-      <td style="text-align:center;font-weight:800;color:var(--primary)">${(pa.guardias/n).toFixed(1)}</td>
-      <td style="text-align:center">${(pa.finde/n).toFixed(1)}</td>
-      <td style="text-align:center">${(pa.buscas/n).toFixed(1)}</td>
-      <td style="text-align:center;font-weight:700;color:var(--warning)">${pa.dobLab || '—'}</td>
-      <td style="text-align:center;font-weight:700;color:var(--danger)">${pa.dobFinde || '—'}</td>
-    </tr>`;
-
-    arr.filter(s => s.anio === a).forEach(s => {
-      const color = getColor(s.colorIdx);
-      html += `<tr>
-        <td colspan="2" style="padding-left:28px;font-size:12px"><span class="dot" style="background:${color};width:8px;height:8px"></span>${esc(s.nombre)}</td>
-        <td style="text-align:center;font-size:12px">${s.guardias}</td>
-        <td style="text-align:center;font-size:12px">${s.guardiasFinde}</td>
-        <td style="text-align:center;font-size:12px">${s.buscas}</td>
-        <td style="text-align:center;font-size:12px;color:var(--warning)">${s.dobletesLab || '—'}</td>
-        <td style="text-align:center;font-size:12px;color:var(--danger)">${s.dobleteFinde || '—'}</td>
-      </tr>`;
-    });
-  });
-
-  html += `</tbody></table></div>`;
-
   // Gráficas
   const sortedG = [...arr].sort((a,b) => b.guardias - a.guardias);
   const maxG = Math.max(...arr.map(x => x.guardias), 1);
@@ -2304,33 +2293,10 @@ function renderStats() {
     svg: svgBarChart(itemsB, maxB, { stacked: false })
   }) : '';
 
-  // Chart 3: Promedio por año de residencia
-  const aniosPresentes = ['R1','R2','R3','R4','R5'].filter(a => porAnio[a]);
-  const maxAvg = Math.max(...aniosPresentes.map(a => porAnio[a].guardias / porAnio[a].n), 1);
-  const items3 = aniosPresentes.map(a => {
-    const pa = porAnio[a];
-    return {
-      label: `${a}  ·  ${pa.n} res.`,
-      value: +(pa.guardias / pa.n).toFixed(1),
-      sub: +(pa.finde / pa.n).toFixed(1),
-      color: R_BAR_COLOR[a] || 'var(--primary)'
-    };
-  });
-  const c3 = items3.length ? renderChartCard({
-    title: 'Promedio por año de residencia',
-    subtitle: 'Media de guardias y guardias de fin de semana por residente',
-    legend: [
-      { kind:'sw', color:'#0d5b6f', label:'Media de guardias' },
-      { kind:'sw-stripe', label:'De ellas, fin de semana' }
-    ],
-    svg: svgBarChart(items3, maxAvg, { stacked: true, valFmt: it => `${it.value.toFixed(1)} · ${it.sub.toFixed(1)}f` })
-  }) : '';
-
   html += `<div class="section-title">Distribución</div>
   <div class="chart-section">
     ${c1}
     ${c2}
-    ${c3}
   </div>`;
 
   content.innerHTML = html;
@@ -2349,6 +2315,87 @@ function darkenHex(hex, factor) {
   const b = parseInt(c.slice(4,6),16);
   const f = v => Math.max(0, Math.min(255, Math.round(v * factor))).toString(16).padStart(2,'0');
   return `#${f(r)}${f(g)}${f(b)}`;
+}
+
+// Estadísticas de una persona, mes a mes
+function htmlStatsResidente(resId) {
+  const r = state.residentes.find(x => x.id === resId);
+  if (!r) return '<p class="text-muted">Elige un residente.</p>';
+  const meses = new Set();
+  for (const [key, id] of Object.entries(state.asignaciones)) if (id === resId) meses.add(key.slice(0, 7));
+  state.ausencias.filter(a => a.resId === resId).forEach(a => { meses.add(a.inicio.slice(0, 7)); meses.add(a.fin.slice(0, 7)); });
+  const lista = [...meses].sort();
+  const color = getColor(r.colorIdx ?? state.residentes.indexOf(r));
+  const tot = calcStats(() => true)[resId];
+
+  let html = `
+  <div class="section-title"><span class="dot" style="background:${color}"></span>${esc(r.nombre)}</div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-num">${tot.guardias}</div><div class="stat-label">Guardias en total</div></div>
+    <div class="stat-card"><div class="stat-num">${tot.guardiasFinde}</div><div class="stat-label">Guardias en finde</div></div>
+    <div class="stat-card"><div class="stat-num">${tot.buscas}</div><div class="stat-label">Buscas</div></div>
+    <div class="stat-card"><div class="stat-num">${tot.ausencias.total}</div><div class="stat-label">Días de ausencia</div></div>
+  </div>`;
+
+  if (!lista.length) return html + '<p class="text-muted">Todavía no tiene guardias ni ausencias registradas.</p>';
+
+  const filas = lista.map(ym => {
+    const st = calcStats(ds => ds.startsWith(ym))[resId];
+    const [y, m] = ym.split('-').map(Number);
+    return { label: `${MESES_STATS[m - 1]} ${y}`, st };
+  });
+  const celda = (v, cls) => v > 0 ? `<span style="font-weight:700;color:var(--${cls})">${v}</span>` : '—';
+
+  html += `<div class="section-title">Mes a mes</div>
+  <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px;font-size:13px">
+  <table>
+    <thead><tr>
+      <th>Mes</th>
+      <th style="text-align:center">Guardias</th>
+      <th style="text-align:center">Lab.</th>
+      <th style="text-align:center">Finde</th>
+      <th style="text-align:center">Buscas</th>
+      <th style="text-align:center">Dobl. lab</th>
+      <th style="text-align:center">Dobl. finde</th>
+      <th style="text-align:center">Ausencia (días)</th>
+    </tr></thead>
+    <tbody>`;
+  filas.forEach(({ label, st }) => {
+    html += `<tr>
+      <td style="font-weight:600">${label}</td>
+      <td style="text-align:center;font-weight:800;font-size:16px;color:var(--primary)">${st.guardias}</td>
+      <td style="text-align:center">${st.guardiasLab}</td>
+      <td style="text-align:center">${st.guardiasFinde}</td>
+      <td style="text-align:center;font-weight:700">${st.buscas}</td>
+      <td style="text-align:center">${celda(st.dobletesLab, 'warning')}</td>
+      <td style="text-align:center">${celda(st.dobleteFinde, 'danger')}</td>
+      <td style="text-align:center">${st.ausencias.total || '—'}</td>
+    </tr>`;
+  });
+  html += `<tr class="anio-row">
+      <td style="font-weight:700">Total</td>
+      <td style="text-align:center;font-weight:800;font-size:16px;color:var(--primary)">${tot.guardias}</td>
+      <td style="text-align:center;font-weight:700">${tot.guardiasLab}</td>
+      <td style="text-align:center;font-weight:700">${tot.guardiasFinde}</td>
+      <td style="text-align:center;font-weight:700">${tot.buscas}</td>
+      <td style="text-align:center">${celda(tot.dobletesLab, 'warning')}</td>
+      <td style="text-align:center">${celda(tot.dobleteFinde, 'danger')}</td>
+      <td style="text-align:center;font-weight:700">${tot.ausencias.total || '—'}</td>
+    </tr></tbody></table></div>`;
+
+  const items = filas.filter(f => f.st.guardias > 0)
+    .map(f => ({ label: f.label, value: f.st.guardias, sub: f.st.guardiasFinde, color }));
+  const chart = items.length ? renderChartCard({
+    title: 'Guardias por mes',
+    subtitle: 'Total de cada mes, con la porción de fin de semana en tono oscuro',
+    legend: [
+      { kind:'sw', color, label:'Laborable' },
+      { kind:'sw-stripe', label:'Fin de semana' }
+    ],
+    svg: svgBarChart(items, Math.max(...items.map(i => i.value), 1), { stacked: true })
+  }) : '';
+  if (chart) html += `<div class="section-title">Distribución</div><div class="chart-section">${chart}</div>`;
+  return html;
 }
 
 function renderChartCard({ title, subtitle, legend, svg }) {
